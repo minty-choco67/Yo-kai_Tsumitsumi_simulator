@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>妖怪つみつみシミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Boku&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light dark;
+--bg:light-dark(#aaad6b,#262819);--heri:light-dark(#2f3a22,#12150c);
+--ink:light-dark(#1d1912,#efe8d2);--soft:light-dark(#4d4536,#bdb49a);
+--paper:light-dark(#f8f2e0,#2f3124);--paper2:light-dark(#efe6cb,#383a2b);--line:light-dark(#cdbf98,#55573f);
+--wood:light-dark(#e2b766,#b58a43);--wood2:light-dark(#c99a4c,#93692c);--grain:light-dark(#3b2a12,#1c1408);
+--tile:#f3e3b6;--tile2:#e6cf94;--edge:#b98d4f;--tink:#1d1712;
+--you:#c23a22;--cpu:#2d4283;--hot:#e2261b;--go:#1e6b52;--gold:#c99212;--ok:light-dark(#1e6b52,#7fe0b4);--ng:light-dark(#c4251a,#ff8a7a);
+--sq:clamp(60px,min(25vw,10.4vh),98px);--tw:clamp(50px,calc(var(--sq)*.62),60px)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+html{overflow-y:scroll;scrollbar-gutter:stable}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 "Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;overflow-x:clip;min-height:100svh}
+button{font:inherit;color:inherit}
+.top{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;padding:10px max(16px,3vw);background:var(--heri);color:#f3ead0;border-bottom:4px solid #6f7d4c}
+.top h1{margin:0;font:400 clamp(24px,3.2vw,40px)/1.05 "Yuji Boku","Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.02em}
+.top h1 small{display:block;font:700 14px/1.2 "Zen Maru Gothic",sans-serif;opacity:.8;margin:6px 0 0 2px;letter-spacing:0}
+.top nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.tb{min-height:40px;padding:6px 14px;border-radius:8px;border:1px solid #7d8a5a;background:transparent;color:#f3ead0;cursor:pointer}
+.tb:hover{background:#ffffff1a}
+.tb:focus-visible,.btn:focus-visible,.cell:focus-visible,.pc:focus-visible,.tile:focus-visible,.opt:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.table{display:grid;grid-template-columns:auto minmax(270px,340px);gap:18px;justify-content:center;align-items:start;padding:18px max(16px,3vw) 32px;max-width:1240px;margin:0 auto}
+.play{display:grid;grid-template-columns:200px auto 200px;gap:16px;align-items:stretch}
+.side{display:grid;gap:14px}
+.stand.cpu{align-self:start}.stand.you{align-self:end}
+.stand{background:var(--wood2);border:2px solid var(--grain);border-radius:6px;padding:10px;color:var(--tink);box-shadow:inset 0 0 0 3px #00000014}
+.stand h2{margin:0 0 6px;font-size:15px;line-height:1.3;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;color:var(--tink)}
+.stand h2 b{color:#fff;padding:1px 8px;border-radius:4px;font-size:14px}
+.stand.you h2 b{background:var(--you)}.stand.cpu h2 b{background:var(--cpu)}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 8px}
+.stats div{background:#f6e9c5;border-radius:4px;padding:3px 6px;text-align:center}
+.stats dt{font-size:12px;color:#5b4b2e;line-height:1.2}.stats dd{margin:0;font-weight:900;font-size:16px;line-height:1.25;white-space:nowrap}
+.stats dd.warn{color:#c4251a}
+.hand{display:flex;flex-wrap:wrap;gap:6px;min-height:calc(var(--tw)*1.1 + 16px);align-content:flex-start;background:var(--wood);border-radius:4px;padding:10px 6px 6px}
+.hand .empty{font-size:13px;color:#5b4b2e;align-self:center;padding:0 4px}
+.kos{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px;align-items:center;font-size:13px;color:#4a3b22}
+.kos .mini{font-size:12px;background:#d9c393;border:1px solid var(--edge);border-radius:3px;padding:0 4px;color:#5d4a2a;text-decoration:line-through}
+/* board */
+.bwrap{display:grid;justify-items:center;align-content:center}
+.board{position:relative;width:calc(var(--sq)*3 + 18px);height:calc(var(--sq)*5 + 18px);padding:9px;background:var(--wood);border:3px solid var(--grain);border-radius:4px;box-shadow:0 10px 0 -4px #00000033}
+.cells{display:grid;grid-template-columns:repeat(3,var(--sq));grid-template-rows:repeat(5,var(--sq));border-top:1px solid var(--grain);border-left:1px solid var(--grain)}
+.cell{position:relative;border-right:1px solid var(--grain);border-bottom:1px solid var(--grain)}
+.cell .lab{position:absolute;left:4px;bottom:2px;font-size:12px;line-height:1;color:#00000059;pointer-events:none}
+.cell.mv{cursor:pointer}
+.cell.mv::after{content:"";position:absolute;left:50%;top:50%;width:26%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);background:#1d1912a6;box-shadow:0 0 0 4px #f8f2e099}
+.cell.dp{cursor:pointer;background:#ffffff40;outline:3px dashed var(--you);outline-offset:-7px}
+.cell.dp::after{content:"ここに出陣";position:absolute;inset:auto 0 30% 0;text-align:center;font-weight:900;font-size:13px;color:var(--you)}
+.cell.pk{cursor:pointer;background:#1e6b5233;outline:3px dashed var(--go);outline-offset:-7px}
+.layer{position:absolute;left:9px;top:9px;width:calc(var(--sq)*3);height:calc(var(--sq)*5);pointer-events:none}
+.pc,.king{position:absolute;width:var(--sq);height:var(--sq);left:calc(var(--c)*var(--sq));top:calc(var(--r)*var(--sq));transition:left .38s ease,top .38s ease;pointer-events:auto;cursor:pointer}
+.pc .lyr,.pc .face,.king .kb{position:absolute;left:11%;width:78%;height:76%;clip-path:polygon(50% 0,86% 15%,100% 100%,0 100%,14% 15%)}
+.pc.cpu .lyr,.pc.cpu .face{clip-path:polygon(0 0,100% 0,86% 85%,50% 100%,14% 85%)}
+.pc .lyr{top:calc(12% - var(--h)*1.8px + var(--i)*3.6px);background:linear-gradient(to bottom,var(--tile2) calc(100% - 2px),#7a5428 0)}
+.pc .face{top:calc(12% - var(--h)*1.8px);background:var(--tile);display:grid;grid-template-rows:1fr auto auto;justify-items:center;align-items:end;padding:calc(var(--sq)*.13) 4% calc(var(--sq)*.085);color:var(--tink)}
+.pc.cpu .face{padding:calc(var(--sq)*.085) 4% calc(var(--sq)*.13)}
+.pc .face::after{content:"";position:absolute;left:0;right:0;height:5px;background:var(--you);bottom:0}
+.pc.cpu .face::after{background:var(--cpu);bottom:auto;top:0}
+.mk{font:400 calc(var(--sq)*.28)/1 "Yuji Boku","Hiragino Mincho ProN","Yu Mincho",serif;align-self:center}
+.nm{font-weight:900;font-size:clamp(9px,calc(var(--sq)*.118),12px);line-height:1.1;white-space:nowrap;letter-spacing:-.04em}
+.nm.l6{font-size:clamp(8px,calc(var(--sq)*.1),11px)}
+.pips{display:flex;gap:2px;margin-top:3px}.pips i{width:6px;height:6px;border-radius:50%;border:1px solid #5b4b2e}.pips i.on{background:var(--you);border-color:var(--you)}
+.pc.cpu .pips i.on{background:var(--cpu);border-color:var(--cpu)}
+.lvb{position:absolute;left:4%;top:calc(6% - var(--h)*1.8px);min-width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:13px;color:#fff;background:var(--you);border:2px solid var(--tile)}
+.pc.cpu .lvb{background:var(--cpu);left:auto;right:3%;top:calc(88% - var(--h)*1.8px - 20px)}
+.pc.done .face{filter:saturate(.35) brightness(.86)}
+.pc.done .lvb{opacity:.6}
+.mvb{position:absolute;width:var(--mb);height:var(--mb);display:grid;place-items:center;border-radius:5px;background:#fffaf0;border:1px solid #4a3b22;color:#2a2116;pointer-events:none}
+.mvb svg{position:absolute;inset:1px;width:calc(100% - 2px);height:calc(100% - 2px);fill:currentColor;stroke:currentColor}
+.mvb b{position:relative;font-weight:900;font-size:calc(var(--mb)*.5);line-height:1}
+.mvb.m-fly{background:#d9ecff;color:#123a6b;border-color:#123a6b}
+.mvb.m-slide{background:#ffe9c7}
+.pc{--mb:clamp(16px,calc(var(--sq)*.23),22px)}
+.pc .mvb{right:4%;top:calc(6% - var(--h)*1.8px)}
+.pc.cpu .mvb{right:auto;left:4%;top:calc(88% - var(--h)*1.8px - var(--mb) + 2px)}
+.pc.done .mvb{opacity:.6}
+.tile{--mb:clamp(14px,calc(var(--tw)*.3),17px)}
+.tile .mvb{right:-3px;top:-3px}
+.pc.sel .face{background:#fff6d4}
+.pc.sel::before{content:"";position:absolute;inset:2px;border-radius:10px;border:3px solid var(--gold)}
+.pc.act::before{border-style:dashed}
+.pc.tg::after,.king.tg::after{content:"";position:absolute;inset:5px;border-radius:50%;border:4px solid var(--hot);box-shadow:0 0 0 3px #ffffffb3;animation:ring 1.1s ease-in-out infinite}
+.pc.evo::after{content:"成り";position:absolute;right:2px;top:2px;background:var(--gold);color:#fff;font-weight:900;font-size:12px;padding:1px 6px;border-radius:10px;box-shadow:0 0 0 3px #ffffffb3}
+.pc.pk::after{content:"";position:absolute;inset:5px;border-radius:12px;border:4px dashed var(--go)}
+.pc.hurt .face{animation:hurt .45s ease}
+.pc.gone{transition:opacity .45s,transform .45s;opacity:0;transform:scale(.6) rotate(-12deg)}
+.dmgpop{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-weight:900;font-size:20px;color:var(--hot);text-shadow:0 0 3px #fff,0 0 6px #fff;animation:float .9s ease forwards;pointer-events:none;white-space:nowrap}
+@keyframes ring{50%{transform:scale(.92)}}
+@keyframes hurt{20%{transform:translateX(-5px);background:#ffb3a8}50%{transform:translateX(5px)}80%{transform:translateX(-2px)}}
+@keyframes float{to{transform:translate(-50%,-26px);opacity:0}}
+.king .kb{top:12%;background:repeating-linear-gradient(135deg,#6b4a22 0 6px,#5a3d1b 6px 12px);border-bottom:none}
+.king.cpu .kb{clip-path:polygon(0 0,100% 0,86% 85%,50% 100%,14% 85%)}
+.king .kb2{top:calc(12% + 4px);filter:brightness(.7)}
+.king .kmk{position:absolute;inset:12% 11% 12%;display:grid;place-items:center;font:400 calc(var(--sq)*.36)/1 "Yuji Boku",serif;color:#f5e3b5}
+.king .kn{position:absolute;right:6%;bottom:6%;background:var(--paper);color:var(--ink);border:1px solid var(--line);font-weight:900;font-size:13px;line-height:1;padding:3px 6px;border-radius:9px}
+.king .rev{position:absolute;left:4%;right:4%;top:2%;text-align:center;font-weight:900;font-size:11px;line-height:1.15;background:#fff4d2;color:#3b2a12;border:1px solid var(--edge);border-radius:4px;padding:2px}
+/* tiles in hand */
+.tile{position:relative;width:var(--tw);height:calc(var(--tw)*1.1);border:0;padding:0;background:none;cursor:default;flex:none}
+.tile .tf{position:absolute;inset:0;clip-path:polygon(50% 0,86% 15%,100% 100%,0 100%,14% 15%);background:var(--tile);display:grid;grid-template-rows:1fr auto;justify-items:center;padding:30% 3% 10%;color:var(--tink)}
+.tile .mk{font-size:calc(var(--tw)*.4)}
+.tile .nm{font-size:clamp(9px,calc(var(--tw)*.17),11px)}
+.tile .lvb{left:-3px;top:-3px;min-width:19px;height:19px;font-size:12px}
+.tile.kt .tf{background:#d8bf86}
+.tile.kt .lvb{background:#6b4a22}
+.tile.can{cursor:pointer}
+.tile.can:hover .tf{background:#fff3cc}
+.tile.on{transform:translateY(-6px)}
+.tile.on .tf{background:#fff3cc;box-shadow:inset 0 0 0 3px var(--gold)}
+.tile.dim{opacity:.5}
+.stand.cpu .tile .lvb{background:var(--cpu)}
+.stand.cpu .tile.kt .lvb{background:#6b4a22}
+/* controls, card, log */
+.box{background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:14px}
+.box h2{margin:0 0 8px;font-size:17px;line-height:1.3}
+.turnline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.turnline strong{font-size:19px;line-height:1.2}
+.who{color:#fff;border-radius:5px;padding:2px 10px;font-weight:900;font-size:14px}
+.who.you{background:var(--you)}.who.cpu{background:var(--cpu)}
+.phases{display:flex;gap:6px;margin:0;padding:0;list-style:none;font-size:14px}
+.phases li{padding:2px 10px;border-radius:12px;border:1px solid var(--line);color:var(--soft)}
+.phases li.on{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:900}
+.hint{margin:0 0 10px;font-size:15px;line-height:1.55}
+.selsum{margin:-4px 0 10px;font-size:14px;line-height:1.5;color:var(--soft)}
+.dice{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;background:var(--paper2);border-radius:8px;padding:10px;margin-bottom:10px;min-height:76px}
+.die{width:80px;height:58px;border-radius:12px;background:#fffdf5;color:#1d1912;border:2px solid #1d1912;display:grid;place-items:center;font-weight:900;font-size:22px;line-height:1;text-align:center;box-shadow:0 4px 0 #1d1912}
+.die.sm{font-size:13px;letter-spacing:-.04em}.die.miss{color:#6d6a63}.die.crit{background:#ffe08a;color:#a3210f}
+.die.land{animation:land .32s ease-out}
+@keyframes land{0%{transform:scale(1.22)}60%{transform:scale(.94)}100%{transform:scale(1)}}
+.track{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 0;padding:0;list-style:none}
+.track li{flex:1 1 auto;text-align:center;white-space:nowrap;font-size:12px;line-height:1;padding:5px 4px;border-radius:999px;border:1px solid var(--line);color:var(--soft);background:var(--paper)}
+.track li.on{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:900}
+.track li.c.on{background:#ffe08a;color:#a3210f;border-color:#a3210f}
+.track li.m.on{background:#8d877a;color:#fff;border-color:#8d877a}
+.tb.snd,.tb.ic{display:inline-flex;align-items:center;gap:6px}
+.tb.snd svg,.tb.ic svg{width:20px;height:20px;flex:none}
+.tb.snd[aria-pressed=false]{opacity:.7}
+.tb.snd[aria-pressed=true] .x,.tb.snd[aria-pressed=false] .w{display:none}
+.dtx{font-size:14px;line-height:1.45}
+.dtx b{display:block;font-size:15px}
+.dtx .ok{color:var(--ok);font-weight:900}.dtx .ng{color:var(--ng);font-weight:900}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.dock{display:flex;flex-wrap:wrap;gap:0 10px;align-items:center}
+.dock .dice{flex:1 1 100%}
+.btn{min-height:44px;padding:8px 14px;border-radius:9px;border:2px solid var(--ink);background:var(--paper);color:var(--ink);font-weight:900;cursor:pointer}
+.btn.main{background:var(--ink);color:var(--paper)}
+.btn.sp{border-color:var(--gold);background:#fff1c2;color:#3b2a12}
+.btn.sp.on{background:var(--gold);color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.setup{display:grid;gap:12px}
+.setup fieldset{border:0;margin:0;padding:0}
+.setup legend{font-weight:900;font-size:15px;margin-bottom:6px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;left:0;top:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1}
+.opt span{display:block;min-height:44px;padding:9px 12px;border-radius:9px;border:2px solid var(--line);background:var(--paper);font-weight:700;font-size:15px;line-height:1.3}
+.opt input:checked+span{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.opt input:focus-visible+span{outline:3px solid var(--gold);outline-offset:2px}
+.deckopt span small{display:block;font-weight:500;font-size:13px;opacity:.85}
+.info .card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:start}
+.info .big{grid-row:span 2;width:64px;height:70px;clip-path:polygon(50% 0,86% 15%,100% 100%,0 100%,14% 15%);background:var(--tile);color:var(--tink);display:grid;place-items:center;padding-top:10px;font:400 34px/1 "Yuji Boku",serif}
+.info h3{margin:0;font-size:20px;line-height:1.2}
+.info .sub{font-size:13px;color:var(--soft)}
+.info dl{margin:10px 0 0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 10px;font-size:14px;line-height:1.5}
+.info dt{font-weight:900;white-space:nowrap}.info dd{margin:0}
+.info .note{font-size:13px;color:var(--soft);margin:8px 0 0}
+.legend{margin:12px 0 0;display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px 10px;align-items:center;font-size:14px;line-height:1.5}
+.legend dt{display:grid;place-items:center;position:relative;height:24px}
+.legend dd{margin:0}
+.legend .mvb,.legend .lvb{position:relative;inset:auto;--mb:22px}
+.legend .lvb.sample{left:auto;top:auto;border-color:var(--paper)}
+.legend .pips.sample{margin:0}
+.log ol{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font-size:14px;line-height:1.5}
+@media (min-width:700px){.info{min-height:var(--infoH,430px)}.log ol{height:260px}}
+.log li{padding:4px 0;border-bottom:1px dashed var(--line)}
+.log li .t{font-weight:900;margin-right:6px}
+.log li.you .t{color:var(--you)}.log li.cpu .t{color:light-dark(var(--cpu),#9fb1ef)}
+.log li.sys{color:var(--soft)}
+dialog{border:0;border-radius:14px;padding:0;max-width:min(560px,calc(100vw - 24px));width:100%;background:var(--paper);color:var(--ink)}
+dialog::backdrop{background:#10120bb3}
+.dlg{padding:20px;display:grid;gap:12px}
+.dlg h2{margin:0;font-size:22px;line-height:1.25}
+.dlg p{margin:0}
+.dlg .hand{background:var(--wood);min-height:0}
+.dlg .row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.dlg.over h2{font:400 clamp(34px,8vw,52px)/1.05 "Yuji Boku",serif}
+.rules{max-height:70vh;overflow:auto;font-size:15px;line-height:1.65}
+.rules h3{font-size:16px;margin:14px 0 4px}
+.rules ul{margin:0;padding-left:1.2em}
+.rules table{border-collapse:collapse;font-size:14px;width:100%}
+.rules td,.rules th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+.reels{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:end;gap:10px}
+.reel{margin:0;text-align:center}
+.reel figcaption{font-weight:900;font-size:15px;margin-bottom:6px}
+.reel.you figcaption{color:var(--you)}.reel.cpu figcaption{color:light-dark(var(--cpu),#9fb1ef)}
+.win{height:124px;border-radius:14px;background:#fffaf0;border:4px solid #3b2a12;box-shadow:inset 0 10px 10px -8px #0006,inset 0 -10px 10px -8px #0006;display:grid;place-items:center;overflow:hidden;color:#1d1912;transition:opacity .25s}
+.win .face{display:grid;justify-items:center;gap:2px}
+.win .face.step{animation:reel var(--st) ease-out}
+.win svg{width:64px;height:64px;fill:#f6dfb0;stroke:#3b2a12;stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.win b{font-size:16px;line-height:1.2}
+.win .q{font:400 52px/1 "Yuji Boku","Hiragino Mincho ProN",serif;color:#8d877a}
+.win.won{border-color:var(--gold);box-shadow:0 0 0 5px #c9921259,inset 0 10px 10px -8px #0006,inset 0 -10px 10px -8px #0006}
+.win.won .face{animation:land .32s ease-out}
+.win.lost{opacity:.5}
+@keyframes reel{from{transform:translateY(-58%);opacity:.2}to{transform:none;opacity:1}}
+.vs{font:400 28px/1 "Yuji Boku","Hiragino Mincho ProN",serif;color:var(--soft);padding-bottom:46px}
+.jkmsg{font-weight:900;font-size:18px;min-height:1.6em;text-align:center}
+.banner{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:#10120b99;cursor:pointer;padding:16px}
+.banner[hidden]{display:none}
+.banner.out{opacity:0;transition:opacity .28s}
+.stamp{display:grid;justify-items:center;gap:6px;padding:clamp(14px,3vw,26px) clamp(24px,6vw,56px) clamp(18px,3vw,30px);border:clamp(6px,1.1vw,10px) solid currentColor;border-radius:20px;background:#fff8e6;transform:rotate(-6deg);animation:stamp .36s cubic-bezier(.2,1.5,.4,1) both;box-shadow:0 18px 40px #0007}
+.banner.you .stamp{color:var(--you)}.banner.cpu .stamp{color:var(--cpu)}
+.stamp b{font:400 clamp(92px,24vw,210px)/1 "Yuji Boku","Hiragino Mincho ProN","Yu Mincho",serif;letter-spacing:.06em}
+.stamp span{font-weight:900;font-size:clamp(17px,2.8vw,24px);color:#1d1912}
+@keyframes stamp{from{transform:rotate(-6deg) scale(2.3);opacity:0}to{transform:rotate(-6deg) scale(1);opacity:1}}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:1099px){
+.table{grid-template-columns:minmax(0,1fr) minmax(260px,320px)}
+.play{grid-template-columns:minmax(0,1fr);justify-items:stretch}
+.stand.cpu,.stand.you{align-self:auto}
+.stand{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+}
+@media (max-width:860px){
+.tb.snd span,.tb.ic span{display:none}
+.tb.snd,.tb.ic{width:40px;justify-content:center;padding:0}
+}
+@media (max-width:699px){
+:root{--sq:clamp(56px,min(25vw,calc((100svh - 480px)/5)),92px);--tw:48px}
+.table{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:8px 10px 24px}
+.play,.side{display:contents}
+.stand.cpu{order:1}.bwrap{order:2}.stand.you{order:3}.ctrl{order:4}.info{order:5}.log{order:6}
+.stand{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;padding:6px 8px}
+.stand h2{font-size:13px;margin:0;gap:6px}
+.stand h2 b{font-size:13px;padding:0 6px}
+.stats{grid-template-columns:repeat(3,auto);justify-content:end;gap:4px;margin:0}
+.stats div{display:flex;gap:4px;align-items:baseline;padding:0 6px}
+.stats dt{font-size:12px}.stats dd{font-size:14px}
+.stand .hand,.stand .kos{flex:1 1 100%}
+.stats div{white-space:nowrap}
+.hand{flex-wrap:nowrap;overflow-x:auto;min-height:calc(var(--tw)*1.1 + 16px)}
+.kos{margin-top:0}
+.ctrl{position:sticky;bottom:0;z-index:5;padding:10px 12px 12px;border-radius:12px 12px 0 0;box-shadow:0 -8px 18px #00000038}
+.turnline{margin-bottom:4px}.turnline strong{font-size:16px}
+.hint{font-size:14px;margin-bottom:6px}
+.selsum{font-size:13px;margin:-2px 0 6px}
+.dice{min-height:0;padding:6px 8px;margin-bottom:8px;gap:10px}
+.dice.idle{display:none}
+.dock .dice{flex:1 1 170px}
+.dock .btns{flex:0 1 auto}
+.stand.cpu{--tw:40px}
+.stand.cpu .hand{min-height:calc(var(--tw)*1.1 + 14px);padding-top:8px}
+.ctrl.setupmode{order:0;position:static;border-radius:10px;box-shadow:none}
+.die{width:68px;height:46px;font-size:18px}
+.die.sm{font-size:11px}
+.dtx{font-size:13px}
+.dtx .calc{display:none}
+.track{display:none}
+.tb.snd span,.tb.ic span{display:none}
+.tb.snd,.tb.ic{width:40px;justify-content:center;padding:0}
+.dtx b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dtx span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.btn{padding:6px 12px}
+.top{padding:6px 10px;flex-wrap:nowrap;gap:8px}
+.top h1{font-size:clamp(13px,3.9vw,22px);letter-spacing:0;white-space:nowrap;overflow:hidden}
+.top h1 small{display:none}
+.top nav{flex-wrap:nowrap;gap:6px}
+.tb{min-height:36px;padding:2px 7px;font-size:13px;white-space:nowrap}
+}
+@media (max-width:420px){
+.stand .dn{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="h-gu" viewBox="0 0 48 48"><rect x="12" y="11" width="6.6" height="12" rx="3.3"/><rect x="18.4" y="9.4" width="6.6" height="13" rx="3.3"/><rect x="24.8" y="10" width="6.6" height="12.5" rx="3.3"/><rect x="31" y="12" width="6.2" height="11" rx="3.1"/><rect x="10.8" y="17" width="27.4" height="22.5" rx="9.5"/><path fill="none" d="M14 28.5c5-3.6 11-3.6 15.2.6"/></symbol>
+  <symbol id="h-choki" viewBox="0 0 48 48"><rect x="14" y="3.2" width="6.6" height="23" rx="3.3" transform="rotate(-13 17.3 26)"/><rect x="22.4" y="2.6" width="6.6" height="23.6" rx="3.3" transform="rotate(11 25.7 26)"/><rect x="28.4" y="16" width="6.2" height="10" rx="3.1"/><rect x="33.4" y="18.4" width="5.4" height="9" rx="2.7"/><rect x="11.4" y="20" width="27" height="21" rx="9.5"/><path fill="none" d="M14.8 30c4.6-3.2 10.2-3.2 13.8.6"/></symbol>
+  <symbol id="h-pa" viewBox="0 0 48 48"><rect x="10.8" y="19" width="6.4" height="16" rx="3.2" transform="rotate(-36 14 35)"/><rect x="12.9" y="5.6" width="6" height="21" rx="3"/><rect x="19.3" y="3" width="6" height="23" rx="3"/><rect x="25.7" y="4.6" width="6" height="21.4" rx="3"/><rect x="31.9" y="9.2" width="5.6" height="17" rx="2.8"/><rect x="11.6" y="20" width="26.2" height="21.4" rx="9.5"/></symbol>
+  <symbol id="mv-step" viewBox="0 0 20 20"><path stroke="none" d="M10 .9l3.3 3.9H6.7zM10 19.1l3.3-3.9H6.7zM.9 10l3.9-3.3v6.6zM19.1 10l-3.9-3.3v6.6z"/></symbol>
+  <symbol id="mv-slide" viewBox="0 0 20 20"><path stroke="none" d="M10 .9l3.3 3.9H6.7zM10 19.1l3.3-3.9H6.7zM.9 10l3.9-3.3v6.6zM19.1 10l-3.9-3.3v6.6zM1 1l4.6 1-3.6 3.6zM19 1l-1 4.6-3.6-3.6zM1 19l1-4.6 3.6 3.6zM19 19l-4.6-1 3.6-3.6z"/></symbol>
+  <symbol id="mv-fly" viewBox="0 0 20 20"><path fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M7.4 3.3L10 .9l2.6 2.4M7.4 5.6L10 3.2l2.6 2.4M7.4 16.7l2.6 2.4 2.6-2.4M7.4 14.4l2.6 2.4 2.6-2.4M3.3 7.4L.9 10l2.4 2.6M5.6 7.4L3.2 10l2.4 2.6M16.7 7.4l2.4 2.6-2.4 2.6M14.4 7.4l2.4 2.6-2.4 2.6"/></symbol>
+</svg>
+<header class="top">
+  <h1>妖怪つみつみシミュレーター<small>スタートパック（対戦パックセット）で CPU対戦</small></h1>
+  <nav><button class="tb snd" id="bSound" type="button" aria-pressed="true" aria-label="効果音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16.5 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>効果音</span></button><button class="tb ic" id="bRules" type="button" aria-label="ルール" title="ルール"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.3 9.4a2.8 2.8 0 1 1 4.1 2.5c-.9.5-1.4 1.1-1.4 2v.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.25" fill="currentColor"/></svg><span>ルール</span></button><button class="tb ic" id="bNew" type="button" aria-label="新しい対戦" title="新しい対戦"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 12.6a7.5 7.5 0 1 1-2.3-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.6 3.6v4.6H15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>新しい対戦</span></button></nav>
+</header>
+<main class="table">
+  <div class="play">
+    <section class="stand cpu" id="standCpu" aria-label="CPUの駒台"></section>
+    <div class="bwrap">
+      <div class="board" id="board">
+        <div class="cells" id="cells"></div>
+        <div class="layer" id="layer"></div>
+      </div>
+    </div>
+    <section class="stand you" id="standYou" aria-label="あなたの駒台"></section>
+  </div>
+  <div class="side">
+    <section class="box ctrl" id="ctrl" aria-live="polite"></section>
+    <section class="box info" id="info"></section>
+    <section class="box log"><h2>対局の記録</h2><ol id="log"></ol></section>
+  </div>
+</main>
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<div class="banner" id="banner" hidden role="status" aria-live="assertive"></div>
+<script>
+/* 妖怪つみつみショーギ：ルールとCPU */
+(function (root) {
+'use strict';
+
+const ROWS = 5, COLS = 3;
+const KING_POS = [[4, 1], [0, 1]];                 // player 0 = bottom, player 1 = top
+const DEPLOY_SQ = [[[4, 0], [4, 2]], [[0, 0], [0, 2]]];
+const TURN_LIMIT = 80;
+const ORTH = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+
+const FACES = [
+  { k: 'miss', label: 'さぼる' },
+  { k: -1, label: '−1' },
+  { k: 0, label: '±0' },
+  { k: 1, label: '＋1' },
+  { k: 2, label: '＋2' },
+  { k: 'crit', label: 'クリティカル' },
+];
+
+const SKILLS = {
+  assault3: { name: '突撃3', text: '移動してから攻撃するとき、レベル＋3。' },
+  noMiss: { name: 'さぼらない', text: '攻撃で「さぼる」が出たら、ダイスをふり直す。' },
+  atk2: { name: '攻撃＋2', text: '攻撃するとき、レベル＋2。' },
+  atk1: { name: '攻撃＋1', text: '攻撃するとき、レベル＋1。' },
+  def1: { name: '防御＋1', text: '攻撃されるとき、レベル＋1。' },
+  support: { name: 'おうえん', text: 'たて・よこのとなりにいる味方のレベル＋1。' },
+  critNull: { name: 'クリティカル無効', text: 'この駒への攻撃で出た「クリティカル」は「さぼる」になる。' },
+  double: { name: '2連撃', text: '1体の敵に2回攻撃する。' },
+  twoTargets: { name: '2回攻撃', text: 'ちがう敵2体に1回ずつ攻撃できる。' },
+  range2: { name: '射程2', text: 'たて・よこ2マス先の敵や王将も攻撃できる。' },
+  diag: { name: 'ななめ攻撃', text: 'ななめとなりの敵や王将も攻撃できる。' },
+  a: { name: 'あ', text: '「うん」をもつ味方が場にいれば、レベル＋1。' },
+  un: { name: 'うん', text: '「あ」をもつ味方が場にいれば、レベル＋1。' },
+  sure: { name: '必中', text: '攻撃のときダイスをふらず、必ず成功する。' },
+  dmg2: { name: '2ダメ', text: '攻撃が成功すると2ダメージ。' },
+};
+
+const SPECIALS = {
+  toge: { name: 'トゲトゲ肉球', cost: 1, kind: 'attack', sure: true, text: 'ダイスをふらずに必ず成功する攻撃をする。' },
+  daikichi: { name: '大吉スマイル', cost: 1, kind: 'react', text: '味方の攻撃で「さぼる」が出たときに使う。その目を「クリティカル」にする。' },
+  nami: { name: 'なみのりフラッシュ', cost: 1, kind: 'all', text: 'たて・よこのとなりの敵すべてに1回ずつ攻撃する。' },
+  fuyu: { name: 'ど根性ストレート', cost: 1, kind: 'attack', dmg: 2, text: '成功すると2ダメージを与える攻撃をする。' },
+  henge: { name: '変形の術', cost: 1, kind: 'attack', hits: 4, text: '1体の敵に4回攻撃する。' },
+  burn: { name: 'バーニングスラッシュ', cost: 1, kind: 'attack', dmg: 2, text: '成功すると2ダメージを与える攻撃をする。' },
+  drain: { name: 'ちょっと吸血', cost: 1, kind: 'drain', text: '攻撃のかわりに、となりの敵1体に1ダメージ。ダメージを与えたら、となりの味方1体のHPを1回復する。' },
+  doton: { name: '土遁の術', cost: 2, kind: 'attack', dmg: 3, text: '成功すると3ダメージを与える攻撃をする。' },
+};
+
+const MOVE_NAME = { step: '歩', slide: '斜', fly: '飛' };
+const MOVE_TEXT = {
+  step: 'たて・よこに進む（ななめは2歩）。駒は飛び越えられない。',
+  slide: 'ななめにも1歩で進める。駒は飛び越えられない。',
+  fly: 'たて・よこに進む（ななめは2歩）。駒を飛び越えられる。',
+};
+
+function C(no, name, mark, lv, tribe, rare, mt, mn, skills, sp, from) {
+  return { no, name, mark, lv, tribe, rare, mv: { t: mt, n: mn }, skills, sp: sp || null, from: from || null };
+}
+const CARDS = {};
+[
+  C('001S1', 'ジバニャン', '地', 1, 'プリチー族', 'ノーマル', 'step', 2, ['assault3']),
+  C('002S1', 'トゲニャン', '棘', 3, 'プリチー族', 'ノーマル', 'step', 1, [], 'toge', 'ジバニャン'),
+  C('003S1', 'ツチノコ', '槌', 1, 'ニョロロン族', 'ノーマル', 'step', 1, ['noMiss']),
+  C('004S1', 'フクリュウ', '福', 4, 'ニョロロン族', 'ノーマル', 'step', 1, [], 'daikichi', 'ツチノコ'),
+  C('005S1', 'ノガッパ', '河', 2, 'プリチー族', 'ノーマル', 'step', 1, ['atk2']),
+  C('006S1', 'なみガッパ', '波', 4, 'プリチー族', 'レア', 'step', 2, [], 'nami', 'ノガッパ'),
+  C('007S1', '一つ目小僧', '目', 1, 'プリチー族', 'ノーマル', 'step', 1, ['support']),
+  C('008S1', 'じんめん犬', '犬', 2, 'ブキミー族', 'ノーマル', 'slide', 1, ['critNull']),
+  C('009S1', 'かおベロス', '顔', 4, 'ブキミー族', 'ノーマル', 'slide', 1, ['double'], null, 'じんめん犬'),
+  C('010S1', 'フユニャン', '冬', 3, 'イサマシ族', 'レア', 'fly', 2, [], 'fuyu'),
+  C('011S1', 'キュウビ', '狐', 5, 'フシギ族', 'レア', 'fly', 2, ['range2']),
+  C('012S1', '大ガマ', '蟇', 5, 'ゴーケツ族', '超レア', 'step', 2, ['double'], 'henge'),
+  C('013S1', 'ジバニャン', '地', 1, 'プリチー族', 'ノーマル', 'step', 2, ['atk1', 'def1']),
+  C('014S1', 'ワルニャン', '悪', 3, 'プリチー族', 'ノーマル', 'step', 1, ['diag'], null, 'ジバニャン'),
+  C('015S1', 'コマさん', '狛', 2, 'プリチー族', 'ノーマル', 'step', 1, ['a']),
+  C('016S1', 'ししコマ', '獅', 4, 'プリチー族', 'レア', 'step', 2, ['double', 'a'], null, 'コマさん'),
+  C('017S1', 'コマじろう', '次', 2, 'プリチー族', 'ノーマル', 'step', 1, ['un']),
+  C('018S1', 'とらじろう', '虎', 4, 'プリチー族', 'レア', 'step', 2, ['twoTargets', 'un'], null, 'コマじろう'),
+  C('019S1', 'のっぺら坊', '無', 1, 'プリチー族', 'ノーマル', 'step', 1, ['support']),
+  C('020S1', 'おにぎり侍', '侍', 1, 'イサマシ族', 'ノーマル', 'step', 1, ['double']),
+  C('021S1', '焼きおに斬り', '斬', 4, 'イサマシ族', 'ノーマル', 'step', 2, [], 'burn', 'おにぎり侍'),
+  C('022S1', 'ガブニャン', '牙', 3, 'ウスラカゲ族', 'ノーマル', 'fly', 2, [], 'drain'),
+  C('023S1', 'オロチ', '蛇', 5, 'ニョロロン族', 'レア', 'fly', 2, ['double', 'sure']),
+  C('024S1', '土蜘蛛', '蜘', 5, 'ブキミー族', '超レア', 'step', 1, ['dmg2'], 'doton'),
+].forEach(c => { CARDS[c.no] = c; });
+
+const KINGS = {
+  K01S1: { no: 'K01S1', name: '反撃2', by: 'キュウビ', eff: 'counter2', text: '王将を攻撃した敵に2ダメージ。' },
+  K02S1: { no: 'K02S1', name: 'まもり', by: '大ガマ', eff: 'guard', text: '攻撃のダイスが「−1」か「±0」なら、この王将は倒されずにもどる。' },
+  K03S1: { no: 'K03S1', name: '味方移動2', by: 'ジバニャン', eff: 'allyMove2', text: '味方1体を2マスまで動かせる（飛び越えOK）。' },
+  K04S1: { no: 'K04S1', name: '周囲1ダメ', by: 'オロチ', eff: 'area1', text: 'この王将のまわり8マスにいる敵すべてに1ダメージ。' },
+  K05S1: { no: 'K05S1', name: '1ダメ', by: '土蜘蛛', eff: 'dmg1', text: '好きな敵1体に1ダメージ。' },
+  K06S1: { no: 'K06S1', name: '敵移動2', by: 'コマさん', eff: 'enemyMove2', text: '敵1体を2マスまで動かせる（飛び越えOK）。' },
+};
+
+const DECKS = {
+  A: { key: 'A', name: '大ガマ・キュウビ組', short: '大ガマ組',
+       yokai: ['001S1', '002S1', '003S1', '004S1', '005S1', '006S1', '007S1', '008S1', '009S1', '010S1', '011S1', '012S1'],
+       kings: ['K01S1', 'K02S1', 'K03S1'] },
+  B: { key: 'B', name: '土蜘蛛・オロチ組', short: '土蜘蛛組',
+       yokai: ['013S1', '014S1', '015S1', '016S1', '017S1', '018S1', '019S1', '020S1', '021S1', '022S1', '023S1', '024S1'],
+       kings: ['K04S1', 'K05S1', 'K06S1'] },
+};
+
+/* ---------- small helpers ---------- */
+const def = id => CARDS[id.slice(2)] || KINGS[id.slice(2)];
+const isYokai = id => !!CARDS[id.slice(2)];
+const inB = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
+const top = pc => CARDS[pc.stack[0].slice(2)];
+const has = (pc, s) => top(pc).skills.includes(s);
+const piecesOf = (g, p) => Object.values(g.pieces).filter(q => q.owner === p);
+function kingOwnerAt(r, c) {
+  for (let p = 0; p < 2; p++) if (KING_POS[p][0] === r && KING_POS[p][1] === c) return p;
+  return -1;
+}
+function occ(g, r, c, ignoreId) {
+  if (kingOwnerAt(r, c) >= 0) return true;
+  const id = g.grid[r][c];
+  return id != null && id !== ignoreId;
+}
+const isDeploySq = (p, r, c) => DEPLOY_SQ[p].some(([a, b]) => a === r && b === c);
+function shuffle(a, rng) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+
+/* ---------- setup & turn flow ---------- */
+function newGame(o) {
+  const rng = o.rng || Math.random;
+  const g = {
+    turn: 0, cur: o.first, phase: 'deploy', players: [], pieces: {},
+    grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
+    active: null, winner: null, reason: '', nextId: 1,
+  };
+  for (let p = 0; p < 2; p++) {
+    const d = DECKS[o.decks[p]];
+    const draw = shuffle(d.yokai.map(no => p + '-' + no), rng);
+    const kings = shuffle(d.kings.map(no => p + '-' + no), rng);
+    g.players.push({ deck: d.key, draw, hand: draw.splice(0, 2), kings, kingOpen: false, ko: [] });
+  }
+  return g;
+}
+
+function startTurn(g) {
+  g.turn++;
+  const pl = g.players[g.cur];
+  const drawn = pl.draw.splice(0, Math.min(2, pl.draw.length));
+  pl.hand.push(...drawn);
+  g.phase = 'deploy';
+  g.active = null;
+  for (const pc of piecesOf(g, g.cur)) { pc.done = false; pc.moved = false; pc.attacked = false; }
+  return drawn;
+}
+
+function endTurn(g) {
+  if (g.winner != null) return null;
+  for (const pc of piecesOf(g, g.cur)) pc.done = true;
+  g.active = null;
+  if (g.turn >= TURN_LIMIT) {
+    const k0 = g.players[0].kings.length, k1 = g.players[1].kings.length;
+    const o0 = g.players[0].ko.length, o1 = g.players[1].ko.length;
+    g.winner = k0 !== k1 ? (k0 > k1 ? 0 : 1) : o0 !== o1 ? (o0 < o1 ? 0 : 1) : 2;
+    g.reason = 'limit';
+    return null;
+  }
+  g.cur = 1 - g.cur;
+  return startTurn(g);
+}
+
+/* ---------- geometry ---------- */
+function reach(g, from, mv, selfId) {
+  const [r0, c0] = from;
+  const dirs = mv.t === 'slide' ? ORTH.concat(DIAG) : ORTH;
+  const seen = new Map([[r0 * COLS + c0, 0]]);
+  const q = [[r0, c0, 0]];
+  while (q.length) {
+    const [r, c, d] = q.shift();
+    if (d >= mv.n) continue;
+    for (const [dr, dc] of dirs) {
+      const nr = r + dr, nc = c + dc;
+      if (!inB(nr, nc)) continue;
+      const key = nr * COLS + nc;
+      if (seen.has(key)) continue;
+      if (mv.t !== 'fly' && occ(g, nr, nc, selfId)) continue;
+      seen.set(key, d + 1);
+      q.push([nr, nc, d + 1]);
+    }
+  }
+  const out = [];
+  for (const key of seen.keys()) {
+    const r = Math.floor(key / COLS), c = key % COLS;
+    if (r === r0 && c === c0) continue;
+    if (!occ(g, r, c, selfId)) out.push([r, c]);
+  }
+  return out;
+}
+
+function attackSquares(card, r, c, orthOnly) {
+  const out = ORTH.map(([dr, dc]) => [r + dr, c + dc]);
+  if (!orthOnly && card.skills.includes('diag')) DIAG.forEach(([dr, dc]) => out.push([r + dr, c + dc]));
+  if (!orthOnly && card.skills.includes('range2')) ORTH.forEach(([dr, dc]) => out.push([r + 2 * dr, c + 2 * dc]));
+  return out.filter(([a, b]) => inB(a, b));
+}
+
+function targetsFrom(g, pc, r, c, variant) {
+  const card = top(pc);
+  const sp = variant && variant !== 'normal' ? SPECIALS[variant] : null;
+  const orthOnly = !!(sp && (sp.kind === 'all' || sp.kind === 'drain'));
+  const res = [];
+  for (const [a, b] of attackSquares(card, r, c, orthOnly)) {
+    const id = g.grid[a][b];
+    if (id != null && id !== pc.id && g.pieces[id].owner !== pc.owner) res.push({ type: 'piece', id, r: a, c: b });
+    const ko = kingOwnerAt(a, b);
+    if (ko >= 0 && ko !== pc.owner && !sp && g.players[ko].kings.length) res.push({ type: 'king', owner: ko, r: a, c: b });
+  }
+  return res;
+}
+
+function allyHas(g, pc, skill) {
+  return piecesOf(g, pc.owner).some(q => q.id !== pc.id && has(q, skill));
+}
+
+function levelOf(g, pc, role, pos, movedBefore) {
+  const card = top(pc);
+  let lv = card.lv;
+  const [r, c] = pos || [pc.r, pc.c];
+  for (const [dr, dc] of ORTH) {
+    const a = r + dr, b = c + dc;
+    if (!inB(a, b)) continue;
+    const id = g.grid[a][b];
+    if (id == null || id === pc.id) continue;
+    const q = g.pieces[id];
+    if (q.owner === pc.owner && has(q, 'support')) lv += 1;
+  }
+  const sk = card.skills;
+  if (sk.includes('a') && allyHas(g, pc, 'un')) lv += 1;
+  if (sk.includes('un') && allyHas(g, pc, 'a')) lv += 1;
+  if (role === 'atk') {
+    if (sk.includes('atk2')) lv += 2;
+    if (sk.includes('atk1')) lv += 1;
+    if (sk.includes('assault3') && movedBefore) lv += 3;
+  }
+  if (role === 'def' && sk.includes('def1')) lv += 1;
+  return lv;
+}
+
+/* ---------- tiles moving between stack and hand ---------- */
+function keepScore(g, owner, id) {           // how much the owner wants this tile in hand
+  const d = def(id);
+  if (!d.lv) return 0;                        // king tile: material only
+  let s = 10 + d.lv;
+  if (d.from && piecesOf(g, owner).some(q => top(q).name === d.from)) s += 6;
+  return s;
+}
+function peel(g, pc, n) {
+  const removed = [];
+  for (let i = 0; i < n && pc.stack.length > 1; i++) {
+    let bi = 1, bs = -1;
+    for (let j = 1; j < pc.stack.length; j++) {
+      const s = keepScore(g, pc.owner, pc.stack[j]);
+      if (s > bs) { bs = s; bi = j; }
+    }
+    removed.push(pc.stack.splice(bi, 1)[0]);
+  }
+  g.players[pc.owner].hand.push(...removed);
+  return removed;
+}
+function autoMaterials(g, p, need, exclude) {
+  const ex = new Set(exclude || []);
+  return g.players[p].hand.filter(id => !ex.has(id))
+    .sort((x, y) => keepScore(g, p, x) - keepScore(g, p, y)).slice(0, need);
+}
+
+function damage(g, pid, n) {
+  const pc = g.pieces[pid];
+  if (!pc || n <= 0) return { dealt: 0, ko: false };
+  const pl = g.players[pc.owner];
+  const name = top(pc).name, owner = pc.owner;
+  if (n >= pc.stack.length) {
+    const hp = pc.stack.length;
+    const [topId, ...rest] = pc.stack;
+    pl.ko.push(topId);
+    pl.hand.push(...rest);
+    g.grid[pc.r][pc.c] = null;
+    delete g.pieces[pid];
+    if (g.active === pid) g.active = null;
+    if (pl.ko.length >= 6 && g.winner == null) { g.winner = 1 - owner; g.reason = 'ko'; }
+    return { dealt: hp, ko: true, name, owner };
+  }
+  peel(g, pc, n);
+  return { dealt: n, ko: false, name, owner };
+}
+
+function healOnce(g, pid) {
+  const pc = g.pieces[pid];
+  if (!pc || pc.stack.length >= top(pc).lv) return null;
+  const pl = g.players[pc.owner];
+  if (!pl.hand.length) return null;
+  const [t] = autoMaterials(g, pc.owner, 1);
+  pl.hand.splice(pl.hand.indexOf(t), 1);
+  pc.stack.push(t);
+  return t;
+}
+
+/* ---------- deploy phase ---------- */
+function deployTargets(g, p, tid) {
+  const pl = g.players[p];
+  const out = { squares: [], evolves: [] };
+  if (g.phase !== 'deploy' || g.cur !== p || !isYokai(tid) || !pl.hand.includes(tid)) return out;
+  const d = def(tid);
+  if (pl.hand.length >= d.lv) out.squares = DEPLOY_SQ[p].filter(([r, c]) => !occ(g, r, c));
+  if (d.from) {
+    for (const pc of piecesOf(g, p)) {
+      if (top(pc).name !== d.from) continue;
+      const need = Math.max(0, d.lv - pc.stack.length - 1);
+      if (pl.hand.length - 1 >= need) out.evolves.push({ pid: pc.id, need });
+    }
+  }
+  return out;
+}
+function takeFromHand(pl, ids) {
+  for (const id of ids) {
+    const i = pl.hand.indexOf(id);
+    if (i < 0) throw new Error('tile not in hand ' + id);
+    pl.hand.splice(i, 1);
+  }
+}
+function deploy(g, p, tid, sq, mats) {
+  const pl = g.players[p];
+  const d = def(tid);
+  const ok = deployTargets(g, p, tid).squares.some(([r, c]) => r === sq[0] && c === sq[1]);
+  if (!ok || mats.length !== d.lv - 1 || mats.includes(tid) || new Set(mats).size !== mats.length) throw new Error('bad deploy');
+  takeFromHand(pl, [tid, ...mats]);
+  const id = 'p' + (g.nextId++);
+  g.pieces[id] = { id, owner: p, stack: [tid, ...mats], r: sq[0], c: sq[1], done: false, moved: false, attacked: false, spTurn: 0 };
+  g.grid[sq[0]][sq[1]] = id;
+  return id;
+}
+function evolve(g, p, tid, pid, mats) {
+  const pl = g.players[p];
+  const ev = deployTargets(g, p, tid).evolves.find(e => e.pid === pid);
+  if (!ev || mats.length !== ev.need || mats.includes(tid) || new Set(mats).size !== mats.length) throw new Error('bad evolve');
+  takeFromHand(pl, [tid, ...mats]);
+  const pc = g.pieces[pid];
+  pc.stack = [tid, ...pc.stack, ...mats];
+  return pid;
+}
+function endDeploy(g) { if (g.phase === 'deploy') g.phase = 'action'; }
+
+/* ---------- action phase ---------- */
+function canAct(g, pid) {
+  const pc = g.pieces[pid];
+  return !!pc && g.phase === 'action' && pc.owner === g.cur && !pc.done && g.winner == null;
+}
+function legalMoves(g, pid) {
+  const pc = g.pieces[pid];
+  if (!canAct(g, pid) || pc.moved) return [];
+  return reach(g, [pc.r, pc.c], top(pc).mv, pc.id);
+}
+function attackVariants(g, pc) {
+  const card = top(pc);
+  const out = [{ variant: 'normal', kind: 'attack', hits: has(pc, 'double') ? 2 : 1, dmg: has(pc, 'dmg2') ? 2 : 1,
+    sure: has(pc, 'sure'), cost: 0, two: has(pc, 'twoTargets') }];
+  const sp = card.sp && SPECIALS[card.sp];
+  if (sp && sp.kind !== 'react' && pc.spTurn !== g.turn && pc.stack.length > sp.cost) {
+    out.push({ variant: card.sp, kind: sp.kind, hits: sp.hits || 1, dmg: sp.dmg || 1, sure: !!sp.sure, cost: sp.cost, two: false });
+  }
+  return out;
+}
+function legalAttacks(g, pid) {
+  const pc = g.pieces[pid];
+  if (!canAct(g, pid) || pc.attacked) return [];
+  return attackVariants(g, pc).map(v => ({ ...v, targets: targetsFrom(g, pc, pc.r, pc.c, v.variant) }))
+    .filter(v => v.targets.length);
+}
+function startAct(g, pid) {
+  if (g.active && g.active !== pid) { const prev = g.pieces[g.active]; if (prev) prev.done = true; }
+  g.active = pid;
+}
+function settle(g, pid) {
+  const pc = g.pieces[pid];
+  if (pc && pc.moved && pc.attacked) pc.done = true;
+  if (!pc || pc.done) { if (g.active === pid) g.active = null; }
+}
+function finishAct(g, pid) {
+  const pc = g.pieces[pid];
+  if (pc) pc.done = true;
+  if (g.active === pid) g.active = null;
+}
+function move(g, pid, r, c) {
+  const pc = g.pieces[pid];
+  if (!legalMoves(g, pid).some(([a, b]) => a === r && b === c)) throw new Error('bad move');
+  startAct(g, pid);
+  g.grid[pc.r][pc.c] = null;
+  pc.r = r; pc.c = c;
+  g.grid[r][c] = pid;
+  pc.moved = true;
+  settle(g, pid);
+}
+function forceMove(g, pid, r, c) {
+  const pc = g.pieces[pid];
+  g.grid[pc.r][pc.c] = null;
+  pc.r = r; pc.c = c;
+  g.grid[r][c] = pid;
+}
+function daikichiUser(g, p) {
+  return piecesOf(g, p).find(q => top(q).sp === 'daikichi' && q.spTurn !== g.turn && q.stack.length > 1) || null;
+}
+
+async function hit(g, io, a, t, o) {
+  const p = a.owner;
+  const atk = levelOf(g, a, 'atk', null, a.moved);
+  const dfn = levelOf(g, t, 'def');
+  const info = { aid: a.id, tid: t.id, aName: top(a).name, tName: top(t).name, owner: p, atk, dfn, dmg: o.dmg, n: o.n || 1, of: o.of || 1 };
+  let fi = -1;
+  if (o.sure) {
+    await io.emit({ type: 'sure', ...info });
+  } else {
+    fi = await io.roll(info);
+    if (FACES[fi].k === 'miss') {
+      let used = false;
+      const fk = daikichiUser(g, p);
+      if (fk && await io.ask(p, 'daikichi', { fk: fk.id, ...info })) {
+        if (g.pieces[fk.id] && g.pieces[fk.id].stack.length > 1) {
+          peel(g, fk, 1); fk.spTurn = g.turn; fi = 5; used = true;
+          await io.emit({ type: 'daikichi', fk: fk.id, ...info });
+        }
+      }
+      if (!used && has(a, 'noMiss')) {
+        let guard = 0;
+        while (FACES[fi].k === 'miss' && guard++ < 50) { await io.emit({ type: 'reroll', ...info }); fi = await io.roll(info); }
+      }
+    }
+    if (FACES[fi].k === 'crit' && has(t, 'critNull')) { fi = 0; await io.emit({ type: 'critNull', ...info }); }
+  }
+  const face = fi < 0 ? null : FACES[fi];
+  const success = !face || face.k === 'crit' || (face.k !== 'miss' && atk + face.k >= dfn);
+  const amount = success ? o.dmg + (face && face.k === 'crit' ? 1 : 0) : 0;
+  const res = amount > 0 ? damage(g, t.id, amount) : { dealt: 0, ko: false };
+  await io.emit({ type: 'hit', ...info, face: fi, success, amount, res });
+  return res;
+}
+
+async function kingEffect(g, io, d, kd, attackerId) {
+  const e = 1 - d;
+  if (kd.eff === 'counter2') {
+    const a = g.pieces[attackerId];
+    if (a) { const nm = top(a).name; const res = damage(g, attackerId, 2); await io.emit({ type: 'kingDmg', owner: d, name: nm, amount: 2, res, kd }); }
+  } else if (kd.eff === 'area1') {
+    const [kr, kc] = KING_POS[d];
+    const ids = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const r = kr + dr, c = kc + dc;
+      if (!inB(r, c)) continue;
+      const id = g.grid[r][c];
+      if (id != null && g.pieces[id].owner === e) ids.push(id);
+    }
+    if (!ids.length) await io.emit({ type: 'kingNoEffect', owner: d, kd });
+    for (const id of ids) {
+      if (g.winner != null) break;
+      const nm = top(g.pieces[id]).name;
+      const res = damage(g, id, 1);
+      await io.emit({ type: 'kingDmg', owner: d, name: nm, amount: 1, res, kd });
+    }
+  } else if (kd.eff === 'dmg1') {
+    const cands = piecesOf(g, e).map(q => q.id);
+    if (!cands.length) { await io.emit({ type: 'kingNoEffect', owner: d, kd }); return; }
+    let pick = await io.ask(d, 'kingDmg1', { options: cands, kd });
+    if (!cands.includes(pick)) pick = cands[0];
+    const nm = top(g.pieces[pick]).name;
+    const res = damage(g, pick, 1);
+    await io.emit({ type: 'kingDmg', owner: d, name: nm, amount: 1, res, kd });
+  } else if (kd.eff === 'allyMove2' || kd.eff === 'enemyMove2') {
+    const who = kd.eff === 'allyMove2' ? d : e;
+    const options = piecesOf(g, who).map(q => ({ id: q.id, squares: reach(g, [q.r, q.c], { t: 'fly', n: 2 }, q.id) }))
+      .filter(o => o.squares.length);
+    if (!options.length) { await io.emit({ type: 'kingNoEffect', owner: d, kd }); return; }
+    const ans = await io.ask(d, kd.eff === 'allyMove2' ? 'kingAllyMove' : 'kingEnemyMove', { options, kd });
+    const opt = ans && options.find(o => o.id === ans.id);
+    if (opt && opt.squares.some(([r, c]) => r === ans.r && c === ans.c) && g.pieces[ans.id]) {
+      const nm = top(g.pieces[ans.id]).name;
+      forceMove(g, ans.id, ans.r, ans.c);
+      await io.emit({ type: 'forceMove', owner: d, pid: ans.id, name: nm, r: ans.r, c: ans.c, kd });
+    } else {
+      await io.emit({ type: 'kingNoEffect', owner: d, kd, skipped: true });
+    }
+  }
+}
+
+async function kingAttack(g, io, a, d) {
+  const pl = g.players[d];
+  const info = { aid: a.id, aName: top(a).name, owner: a.owner, king: d };
+  const fi = await io.roll(info);
+  const face = FACES[fi];
+  if (face.k === 'miss') { await io.emit({ type: 'kingMiss', ...info, face: fi }); return; }
+  const kt = pl.kings[pl.kings.length - 1];
+  const kd = def(kt);
+  pl.kingOpen = true;
+  await io.emit({ type: 'kingReveal', ...info, face: fi, kt });
+  if (kd.eff === 'guard' && (face.k === -1 || face.k === 0)) { await io.emit({ type: 'guard', ...info, kt }); return; }
+  pl.kings.pop();
+  pl.kingOpen = false;
+  pl.hand.push(kt);
+  await io.emit({ type: 'kingDown', ...info, kt, left: pl.kings.length });
+  if (!pl.kings.length) { if (g.winner == null) { g.winner = a.owner; g.reason = 'king'; } return; }
+  await kingEffect(g, io, d, kd, a.id);
+}
+
+async function attack(g, io, pid, variant, target) {
+  const a = g.pieces[pid];
+  const opt = legalAttacks(g, pid).find(v => v.variant === variant);
+  if (!opt) throw new Error('bad attack');
+  if (opt.kind !== 'all' && !opt.targets.some(t => t.type === target.type && t.id === target.id && t.owner === target.owner)) throw new Error('bad target');
+  startAct(g, pid);
+  const p = a.owner;
+  const sp = variant === 'normal' ? null : SPECIALS[variant];
+  a.attacked = true;
+  if (sp) {
+    peel(g, a, sp.cost);
+    a.spTurn = g.turn;
+    await io.emit({ type: 'special', pid, owner: p, aName: top(a).name, sp });
+  }
+  if (target && target.type === 'king') {
+    await kingAttack(g, io, a, target.owner);
+  } else if (sp && sp.kind === 'drain') {
+    const tName = top(g.pieces[target.id]).name;
+    const res = damage(g, target.id, 1);
+    await io.emit({ type: 'drainHit', owner: p, aName: top(a).name, tName, res });
+    if (res.dealt > 0 && g.winner == null && g.pieces[pid]) {
+      const cands = targetsAround(g, a).filter(q => q.stack.length < top(q).lv);
+      if (cands.length && g.players[p].hand.length) {
+        let pick = await io.ask(p, 'heal', { options: cands.map(q => q.id), pid });
+        if (!cands.some(q => q.id === pick)) pick = cands[0].id;
+        const t = healOnce(g, pick);
+        if (t) await io.emit({ type: 'heal', owner: p, pid: pick, name: top(g.pieces[pick]).name });
+      }
+    }
+  } else if (sp && sp.kind === 'all') {
+    const ids = opt.targets.filter(t => t.type === 'piece').map(t => t.id);
+    for (const tid of ids) {
+      if (g.winner != null || !g.pieces[pid]) break;
+      if (!g.pieces[tid]) continue;
+      await hit(g, io, a, g.pieces[tid], { dmg: 1 });
+    }
+  } else {
+    for (let i = 0; i < opt.hits; i++) {
+      if (g.winner != null || !g.pieces[target.id] || !g.pieces[pid]) break;
+      await hit(g, io, a, g.pieces[target.id], { dmg: opt.dmg, sure: opt.sure, n: i + 1, of: opt.hits });
+    }
+    if (opt.two && g.winner == null && g.pieces[pid]) {
+      const others = targetsFrom(g, a, a.r, a.c, 'normal').filter(t => t.type === 'piece' && t.id !== target.id);
+      if (others.length) {
+        const pick = await io.ask(p, 'secondTarget', { pid, options: others });
+        if (pick && g.pieces[pick] && others.some(t => t.id === pick)) await hit(g, io, a, g.pieces[pick], { dmg: opt.dmg, sure: opt.sure });
+      }
+    }
+  }
+  settle(g, pid);
+  await io.emit({ type: 'attackEnd', pid, owner: p });
+}
+function targetsAround(g, pc) {
+  return ORTH.map(([dr, dc]) => [pc.r + dr, pc.c + dc]).filter(([r, c]) => inB(r, c))
+    .map(([r, c]) => g.grid[r][c]).filter(id => id != null && g.pieces[id].owner === pc.owner).map(id => g.pieces[id]);
+}
+
+/* =================================================================
+   CPU
+   ================================================================= */
+const LVV = [0, 2.0, 3.6, 5.4, 7.6, 10.0];
+function abilityBonus(card) {
+  const s = card.skills;
+  let b = 0;
+  if (s.includes('double')) b += 2.0;
+  if (s.includes('sure')) b += 2.0;
+  if (s.includes('dmg2')) b += 2.0;
+  if (s.includes('range2')) b += 1.5;
+  if (s.includes('twoTargets')) b += 1.5;
+  if (s.includes('diag')) b += 0.7;
+  if (s.includes('support')) b += 0.6;
+  if (s.includes('a') || s.includes('un')) b += 0.5;
+  if (s.includes('assault3') || s.includes('atk2')) b += 0.8;
+  if (s.includes('atk1') || s.includes('def1')) b += 0.4;
+  if (s.includes('critNull') || s.includes('noMiss')) b += 0.3;
+  if (card.sp) b += card.sp === 'henge' ? 1.8 : card.sp === 'doton' ? 1.2 : 0.9;
+  return b;
+}
+const worth = (card, hp) => LVV[card.lv] + 0.9 * hp + abilityBonus(card);
+
+function hitProbs(atk, dfn, o) {
+  if (o.sure) return [[o.dmg, 1]];
+  let ks = FACES.map(f => f.k);
+  if (o.noMiss) ks = ks.filter(k => k !== 'miss');
+  const m = new Map();
+  for (const k of ks) {
+    let d = 0;
+    if (k === 'crit') d = o.critNull ? 0 : o.dmg + 1;
+    else if (k !== 'miss') d = atk + k >= dfn ? o.dmg : 0;
+    m.set(d, (m.get(d) || 0) + 1 / ks.length);
+  }
+  return [...m];
+}
+function dmgDist(per, hits, cap) {
+  let dist = new Map([[0, 1]]);
+  for (let i = 0; i < hits; i++) {
+    const nd = new Map();
+    for (const [d, p] of dist) {
+      if (d >= cap) { nd.set(d, (nd.get(d) || 0) + p); continue; }
+      for (const [x, q] of per) { const v = Math.min(cap, d + x); nd.set(v, (nd.get(v) || 0) + p * q); }
+    }
+    dist = nd;
+  }
+  return dist;
+}
+function threatensKing(g, e) {
+  const k = KING_POS[1 - e.owner];
+  if (!g.players[1 - e.owner].kings.length) return false;
+  const sqs = [[e.r, e.c], ...reach(g, [e.r, e.c], top(e).mv, e.id)];
+  for (const [r, c] of sqs) for (const [a, b] of attackSquares(top(e), r, c)) if (a === k[0] && b === k[1]) return true;
+  return false;
+}
+function koValue(g, t) {
+  let v = 5 + worth(top(t), t.stack.length);
+  const after = g.players[t.owner].ko.length + 1;
+  if (after >= 6) v += 1000; else if (after === 5) v += 6;
+  if (threatensKing(g, t)) v += 4;
+  return v;
+}
+const dmgValue = (t, d, g) => d * (0.7 + 0.1 * top(t).lv) * (g && threatensKing(g, t) ? 1.7 : 1);
+
+function evOnPiece(g, a, t, pos, movedBefore, vi) {
+  const atk = levelOf(g, a, 'atk', pos, movedBefore);
+  const dfn = levelOf(g, t, 'def');
+  const per = hitProbs(atk, dfn, { sure: vi.sure, noMiss: has(a, 'noMiss'), critNull: has(t, 'critNull'), dmg: vi.dmg });
+  const hp = t.stack.length;
+  let ev = 0;
+  const kv = koValue(g, t);
+  const tk = threatensKing(g, t) ? 1.7 : 1;
+  for (const [d, p] of dmgDist(per, vi.hits, hp)) ev += p * (d >= hp ? kv : d * (0.7 + 0.1 * top(t).lv) * tk);
+  return ev;
+}
+function evOnKing(g, a, d) {
+  const pl = g.players[d];
+  const ks = pl.kings;
+  if (!ks.length) return 0;
+  const cands = pl.kingOpen ? [ks[ks.length - 1]] : ks.slice();
+  const last = ks.length === 1;
+  let ev = 0;
+  for (const kt of cands) {
+    const kd = def(kt);
+    const pS = kd.eff === 'guard' ? 3 / 6 : 5 / 6;
+    const gain = last ? 1000 : ks.length === 2 ? 26 : 18;
+    let pen = 0;
+    if (!last) {
+      if (kd.eff === 'counter2') pen = a.stack.length <= 2 ? worth(top(a), a.stack.length) + 5 : 2.2;
+      else if (kd.eff === 'area1') pen = a.stack.length <= 1 ? 4 : 1.5;
+      else if (kd.eff === 'dmg1') pen = 1.2;
+      else if (kd.eff === 'enemyMove2') pen = 1.5;
+      else if (kd.eff === 'allyMove2') pen = 1.0;
+    }
+    ev += pS * (gain - pen) / cands.length;
+  }
+  return ev;
+}
+
+function makeCtx(g, me) {
+  const en = 1 - me;
+  const enemies = piecesOf(g, en).map(e => {
+    const sqs = [[e.r, e.c], ...reach(g, [e.r, e.c], top(e).mv, e.id)];
+    const att = new Set();
+    for (const [r, c] of sqs) for (const [a, b] of attackSquares(top(e), r, c)) att.add(a * COLS + b);
+    return { e, att, canMove: sqs.length > 1 };
+  });
+  // the opponent may also summon its best affordable yokai on a free 出陣マス and act at once
+  const eh = g.players[en].hand, ehN = eh.length + Math.min(2, g.players[en].draw.length);
+  let fresh = null;
+  for (const id of eh) if (isYokai(id) && def(id).lv <= ehN && (!fresh || def(id).lv > def(fresh).lv)) fresh = id;
+  if (fresh) {
+    const d = def(fresh);
+    for (const [r, c] of DEPLOY_SQ[en]) {
+      if (occ(g, r, c)) continue;
+      const ghost = { id: '_ghost' + r + c, owner: en, stack: Array(d.lv).fill(fresh), r, c, spTurn: 0 };
+      const sqs = [[r, c], ...reach(g, [r, c], d.mv, ghost.id)];
+      const att = new Set();
+      for (const [a, b] of sqs) for (const [x, y] of attackSquares(d, a, b)) att.add(x * COLS + y);
+      enemies.push({ e: ghost, att, canMove: true, weight: 0.5 });
+    }
+  }
+  const k = KING_POS[me];
+  const kingThreat = enemies.filter(x => !x.weight && x.att.has(k[0] * COLS + k[1])).length;
+  const hand = g.players[me].hand, hN = hand.length + Math.min(2, g.players[me].draw.length);
+  let deployNeed = 0;
+  for (const id of hand) if (isYokai(id) && def(id).lv <= hN) deployNeed = Math.max(deployNeed, LVV[def(id).lv]);
+  const freeOwn = DEPLOY_SQ[me].filter(([r, c]) => !occ(g, r, c)).length;
+  return { me, en, enemies, kingThreat, wantDeploy: deployNeed > 0, deployNeed, freeOwn };
+}
+function danger(g, pc, pos, ctx) {
+  let tot = 0;
+  const key = pos[0] * COLS + pos[1];
+  const hp = pc.stack.length;
+  const card = top(pc);
+  const fake = { ...pc, r: pos[0], c: pos[1] };
+  for (const x of ctx.enemies) {
+    if (!x.att.has(key)) continue;
+    const e = x.e;
+    const ecard = top(e);
+    const atk = levelOf(g, e, 'atk', null, x.canMove);
+    const dfn = levelOf(g, fake, 'def', pos);
+    const per = hitProbs(atk, dfn, { sure: ecard.skills.includes('sure'), noMiss: ecard.skills.includes('noMiss'),
+      critNull: card.skills.includes('critNull'), dmg: ecard.skills.includes('dmg2') ? 2 : 1 });
+    const hits = ecard.skills.includes('double') ? 2 : 1;
+    let part = 0;
+    for (const [d, p] of dmgDist(per, hits, hp)) part += p * (d >= hp ? worth(card, hp) + 5 : d * 0.8);
+    tot += part * (x.weight || 1);
+  }
+  return tot;
+}
+function nextOpp(g, pc, pos) {
+  const card = top(pc);
+  const sqs = [pos, ...reach(g, pos, card.mv, pc.id)];
+  const vi = attackVariants(g, pc)[0];
+  let best = 0;
+  for (const s of sqs) {
+    for (const t of targetsFrom(g, pc, s[0], s[1], 'normal')) {
+      const v = t.type === 'king' ? evOnKing(g, pc, t.owner)
+        : evOnPiece(g, pc, g.pieces[t.id], s, s !== pos, vi);
+      if (v > best) best = v;
+    }
+  }
+  return best;
+}
+function kingDist(pos, en) {
+  const [kr, kc] = KING_POS[en];
+  let best = 9;
+  for (const [dr, dc] of ORTH) {
+    const r = kr + dr, c = kc + dc;
+    if (!inB(r, c)) continue;
+    best = Math.min(best, Math.abs(r - pos[0]) + Math.abs(c - pos[1]));
+  }
+  return best;
+}
+function posValue(g, pc, pos, ctx) {
+  const me = pc.owner, en = 1 - me;
+  let v = 0;
+  if (isDeploySq(en, pos[0], pos[1])) v += 2.5;
+  const nearOwnKing = Math.abs(pos[0] - KING_POS[me][0]) + Math.abs(pos[1] - KING_POS[me][1]) === 1;
+  const ownDeploy = isDeploySq(me, pos[0], pos[1]);
+  if (ownDeploy && ctx.wantDeploy) v -= 0.6 + 0.25 * ctx.deployNeed * (ctx.freeOwn <= 1 ? 1.6 : 1);
+  if (nearOwnKing && ctx.kingThreat) v += (ownDeploy ? 0.6 : 1.4) * Math.min(2, ctx.kingThreat);
+  v += 0.45 * nextOpp(g, pc, pos);
+  v -= 0.35 * kingDist(pos, en);
+  v -= 0.6 * danger(g, pc, pos, ctx);
+  if (ctx.kingThreat) v += kingBlock(g, pc, pos, ctx);
+  return v;
+}
+// value of standing on `pos` because it stops enemies from reaching an attack square on our king
+function kingBlock(g, pc, pos, ctx) {
+  const k = KING_POS[ctx.me], kKey = k[0] * COLS + k[1];
+  const onBoard = g.pieces[pc.id] === pc;
+  const prev = g.grid[pos[0]][pos[1]];
+  if (onBoard) g.grid[pc.r][pc.c] = null;
+  g.grid[pos[0]][pos[1]] = pc.id;
+  const realPieces = g.pieces[pc.id];
+  if (!onBoard) g.pieces[pc.id] = pc;
+  let v = 0;
+  try {
+    for (const x of ctx.enemies) {
+      if (x.weight || !x.att.has(kKey)) continue;
+      const e = x.e;
+      const sqs = [[e.r, e.c], ...reach(g, [e.r, e.c], top(e).mv, e.id)];
+      let can = false;
+      for (const [r, c] of sqs) { for (const [a, b] of attackSquares(top(e), r, c)) if (a === k[0] && b === k[1]) { can = true; break; } if (can) break; }
+      if (!can) v += 0.55 * 15;
+    }
+  } finally {
+    g.grid[pos[0]][pos[1]] = prev;
+    if (onBoard) g.grid[pc.r][pc.c] = pc.id;
+    if (!onBoard) { if (realPieces) g.pieces[pc.id] = realPieces; else delete g.pieces[pc.id]; }
+  }
+  return v;
+}
+function evalAttack(g, pc, s, movedBefore, vi, t) {
+  if (vi.kind === 'all') {
+    let ev = 0;
+    for (const x of targetsFrom(g, pc, s[0], s[1], vi.variant)) if (x.type === 'piece') ev += evOnPiece(g, pc, g.pieces[x.id], s, movedBefore, { ...vi, hits: 1 });
+    return ev;
+  }
+  if (t.type === 'king') return evOnKing(g, pc, t.owner);
+  const tp = g.pieces[t.id];
+  if (vi.kind === 'drain') {
+    const base = tp.stack.length <= 1 ? koValue(g, tp) : dmgValue(tp, 1, g);
+    const fake = { ...pc, r: s[0], c: s[1] };
+    const healable = targetsAround(g, fake).some(q => q.id !== pc.id && q.stack.length < top(q).lv) && g.players[pc.owner].hand.length;
+    return base + (healable ? 0.9 : 0);
+  }
+  let ev = evOnPiece(g, pc, tp, s, movedBefore, vi);
+  if (vi.two) {
+    let b2 = 0;
+    for (const x of targetsFrom(g, pc, s[0], s[1], 'normal')) if (x.type === 'piece' && x.id !== t.id) b2 = Math.max(b2, evOnPiece(g, pc, g.pieces[x.id], s, movedBefore, { ...vi, hits: 1 }));
+    ev += b2;
+  }
+  return ev;
+}
+
+const NOISE = { easy: 7, normal: 1.6, hard: 0 };
+function gauss(rng) { let u = 0, v = 0; while (!u) u = rng(); while (!v) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+function chooseAction(g, me, level, rng) {
+  rng = rng || Math.random;
+  const ctx = makeCtx(g, me);
+  const sigma = NOISE[level] || 0;
+  let best = null;
+  for (const pc of piecesOf(g, me)) {
+    if (pc.done) continue;
+    const cur = [pc.r, pc.c];
+    const base = posValue(g, pc, cur, ctx);
+    const moves = pc.moved ? [] : reach(g, cur, top(pc).mv, pc.id);
+    const vis = pc.attacked ? [] : attackVariants(g, pc);
+    const plans = [];
+    const pvs = new Map();
+    for (const s of [cur, ...moves]) pvs.set(s, posValue(g, pc, s, ctx));
+    for (const s of [cur, ...moves]) {
+      const moved = s !== cur;
+      const pv = pvs.get(s);
+      if (moved) plans.push({ score: pv, move: s, order: 'ma', variant: null, target: null });
+      for (const vi of vis) {
+        const pen = vi.cost ? vi.cost * 0.5 + (pc.stack.length - vi.cost <= 1 ? 1.5 : 0) : 0;
+        const ts = targetsFrom(g, pc, s[0], s[1], vi.variant);
+        if (vi.kind === 'all') {
+          if (ts.some(t => t.type === 'piece')) plans.push({ score: pv + evalAttack(g, pc, s, moved || pc.moved, vi, null) - pen, move: moved ? s : null, order: 'ma', variant: vi.variant, target: null });
+          continue;
+        }
+        for (const t of ts) {
+          const ev = evalAttack(g, pc, s, moved || pc.moved, vi, t);
+          plans.push({ score: pv + ev - pen, move: moved ? s : null, order: 'ma', variant: vi.variant, target: t });
+        }
+      }
+    }
+    if (!pc.moved && moves.length && vis.length) {
+      let bestPos = -1e9;
+      for (const v of pvs.values()) bestPos = Math.max(bestPos, v);
+      for (const vi of vis) {
+        const pen = vi.cost ? vi.cost * 0.5 + (pc.stack.length - vi.cost <= 1 ? 1.5 : 0) : 0;
+        const ts = targetsFrom(g, pc, cur[0], cur[1], vi.variant);
+        if (vi.kind === 'all') {
+          if (ts.some(t => t.type === 'piece')) plans.push({ score: bestPos + evalAttack(g, pc, cur, false, vi, null) - pen, move: null, order: 'am', variant: vi.variant, target: null });
+          continue;
+        }
+        for (const t of ts) plans.push({ score: bestPos + evalAttack(g, pc, cur, false, vi, t) - pen, move: null, order: 'am', variant: vi.variant, target: t });
+      }
+    }
+    for (const pl of plans) {
+      const gain = pl.score - base + (sigma ? gauss(rng) * sigma : 0);
+      if (!best || gain > best.gain) best = { pid: pc.id, plan: pl, gain };
+    }
+  }
+  if (!best || best.gain < 0.05) return null;
+  return best;
+}
+function choosePostMove(g, pid) {
+  const pc = g.pieces[pid];
+  if (!pc || pc.moved || pc.done) return null;
+  const ctx = makeCtx(g, pc.owner);
+  const cur = [pc.r, pc.c];
+  let best = null, bv = posValue(g, pc, cur, ctx) + 0.05;
+  for (const s of legalMoves(g, pid)) { const v = posValue(g, pc, s, ctx); if (v > bv) { bv = v; best = s; } }
+  return best;
+}
+
+function futureGain(g, me, hand) {
+  const h = hand.length + Math.min(2, g.players[me].draw.length);
+  let best = 0;
+  for (const id of hand) {
+    if (!isYokai(id)) continue;
+    const d = def(id);
+    if (d.lv <= h) best = Math.max(best, worth(d, d.lv) - 0.6 * d.lv);
+    if (d.from) for (const pc of piecesOf(g, me)) if (top(pc).name === d.from) {
+      const need = d.lv - pc.stack.length;
+      if (need <= h) best = Math.max(best, worth(d, d.lv) - worth(top(pc), pc.stack.length) - 0.6 * need);
+    }
+  }
+  return 0.55 * best;
+}
+function chooseDeploys(g, me, level, rng) {
+  rng = rng || Math.random;
+  const sigma = NOISE[level] || 0;
+  const pl = g.players[me];
+  const ctx = makeCtx(g, me);
+  const yokai = [...new Set(pl.hand.filter(isYokai))];
+  const free = DEPLOY_SQ[me].filter(([r, c]) => !occ(g, r, c));
+  const evos = [];
+  for (const tid of yokai) {
+    const d = def(tid);
+    if (!d.from) continue;
+    for (const pc of piecesOf(g, me)) if (top(pc).name === d.from) evos.push({ tid, pid: pc.id, need: Math.max(0, d.lv - pc.stack.length - 1) });
+  }
+  const cache = new Map();
+  const deployScore = (tid, sq) => {
+    const k = tid + sq.join();
+    if (cache.has(k)) return cache.get(k);
+    const d = def(tid);
+    const fake = { id: '_tmp', owner: me, stack: [tid, ...Array(d.lv - 1).fill(tid)], r: sq[0], c: sq[1], spTurn: 0 };
+    const v = worth(d, d.lv) + posValue(g, fake, sq, ctx) + 0.4 * nextOpp(g, fake, sq);
+    cache.set(k, v);
+    return v;
+  };
+  const evoScore = e => {
+    const pc = g.pieces[e.pid];
+    const d = def(e.tid);
+    const fake = { ...pc, stack: [e.tid, ...pc.stack, ...Array(e.need).fill(e.tid)] };
+    return worth(d, d.lv) - worth(top(pc), pc.stack.length) + 0.4 * (nextOpp(g, fake, [pc.r, pc.c]) - nextOpp(g, pc, [pc.r, pc.c]));
+  };
+  const plans = [];
+  const rec = (i, usedT, usedP, cost, acts, score) => {
+    if (i === evos.length) {
+      plans.push({ acts, cost, score, usedT });
+      return;
+    }
+    rec(i + 1, usedT, usedP, cost, acts, score);
+    const e = evos[i];
+    if (usedT.has(e.tid) || usedP.has(e.pid)) return;
+    const c2 = cost + 1 + e.need;
+    if (c2 > pl.hand.length) return;
+    rec(i + 1, new Set([...usedT, e.tid]), new Set([...usedP, e.pid]), c2, [...acts, { type: 'evolve', tid: e.tid, pid: e.pid, need: e.need }], score + evoScore(e));
+  };
+  rec(0, new Set(), new Set(), 0, [], 0);
+  const full = [];
+  for (const base of plans) {
+    full.push(base);
+    for (let i = 0; i < yokai.length; i++) {
+      const a = yokai[i];
+      if (base.usedT.has(a)) continue;
+      const la = def(a).lv;
+      if (base.cost + la > pl.hand.length) continue;
+      for (const sqA of free) {
+        const sA = deployScore(a, sqA);
+        full.push({ acts: [...base.acts, { type: 'deploy', tid: a, sq: sqA, need: la - 1 }], cost: base.cost + la, score: base.score + sA, usedT: new Set([...base.usedT, a]) });
+        if (free.length < 2) continue;
+        const sqB = free.find(s => s !== sqA);
+        for (let j = i + 1; j < yokai.length; j++) {
+          const b = yokai[j];
+          if (base.usedT.has(b)) continue;
+          const lb = def(b).lv;
+          if (base.cost + la + lb > pl.hand.length) continue;
+          full.push({ acts: [...base.acts, { type: 'deploy', tid: a, sq: sqA, need: la - 1 }, { type: 'deploy', tid: b, sq: sqB, need: lb - 1 }],
+            cost: base.cost + la + lb, score: base.score + sA + deployScore(b, sqB), usedT: new Set([...base.usedT, a, b]) });
+        }
+      }
+    }
+  }
+  let best = null;
+  for (const p of full) {
+    // remaining hand after this plan (tops + cheapest materials)
+    const tops = p.acts.map(x => x.tid);
+    const need = p.acts.reduce((s, x) => s + x.need, 0);
+    const mats = autoMaterialsPlan(g, me, need, tops);
+    if (mats.length < need) continue;
+    const rest = pl.hand.filter(id => !tops.includes(id) && !mats.includes(id));
+    const total = p.score + 0.6 * rest.length + futureGain(g, me, rest) + (sigma ? gauss(rng) * sigma : 0);
+    if (!best || total > best.total) best = { total, acts: p.acts, mats };
+  }
+  if (!best) return [];
+  // hand out the chosen materials to each act
+  const pool = best.mats.slice();
+  return best.acts.map(x => ({ ...x, mats: pool.splice(0, x.need) }));
+}
+function autoMaterialsPlan(g, me, need, exclude) {
+  const ex = new Set(exclude);
+  const keepPlan = id => {
+    let s = keepScore(g, me, id);
+    return s;
+  };
+  return g.players[me].hand.filter(id => !ex.has(id)).sort((x, y) => keepPlan(x) - keepPlan(y)).slice(0, need);
+}
+
+/* reactive answers for the CPU (and defaults) */
+function cpuAnswer(g, me, kind, data) {
+  if (kind === 'daikichi') {
+    const a = g.pieces[data.aid], t = g.pieces[data.tid];
+    if (!a || !t) return false;
+    return !has(a, 'noMiss') && !has(t, 'critNull');
+  }
+  if (kind === 'heal') {
+    let best = data.options[0], bv = -1;
+    for (const id of data.options) { const q = g.pieces[id]; const v = worth(top(q), q.stack.length) + 3 * (top(q).lv - q.stack.length); if (v > bv) { bv = v; best = id; } }
+    return best;
+  }
+  if (kind === 'secondTarget') {
+    const a = g.pieces[data.pid];
+    let best = null, bv = -1;
+    const vi = attackVariants(g, a)[0];
+    for (const t of data.options) { const v = evOnPiece(g, a, g.pieces[t.id], [a.r, a.c], a.moved, { ...vi, hits: 1 }); if (v > bv) { bv = v; best = t.id; } }
+    return best;
+  }
+  if (kind === 'kingDmg1') {
+    let best = data.options[0], bv = -1;
+    for (const id of data.options) { const q = g.pieces[id]; const v = q.stack.length <= 1 ? koValue(g, q) : dmgValue(q, 1) + (threatensKing(g, q) ? 2 : 0); if (v > bv) { bv = v; best = id; } }
+    return best;
+  }
+  if (kind === 'kingAllyMove' || kind === 'kingEnemyMove') {
+    const ally = kind === 'kingAllyMove';
+    let best = null, bv = 0.3;
+    for (const o of data.options) {
+      const q = g.pieces[o.id];
+      const ctx = makeCtx(g, q.owner);
+      const now = posValue(g, q, [q.r, q.c], ctx);
+      for (const s of o.squares) {
+        const v = posValue(g, q, s, ctx) - now;
+        const gain = ally ? v : -v;
+        if (gain > bv) { bv = gain; best = { id: o.id, r: s[0], c: s[1] }; }
+      }
+    }
+    return best;
+  }
+  return null;
+}
+
+/* full CPU turn (after startTurn has drawn) */
+async function cpuTurn(g, io, me, level, rng) {
+  const acts = chooseDeploys(g, me, level, rng);
+  for (const x of acts) {
+    if (g.winner != null) return;
+    if (x.type === 'deploy') {
+      if (occ(g, x.sq[0], x.sq[1])) continue;
+      const id = deploy(g, me, x.tid, x.sq, x.mats);
+      await io.emit({ type: 'deploy', owner: me, pid: id, name: def(x.tid).name, mats: x.mats.length });
+    } else {
+      if (!g.pieces[x.pid]) continue;
+      const before = top(g.pieces[x.pid]).name;
+      evolve(g, me, x.tid, x.pid, x.mats);
+      await io.emit({ type: 'evolve', owner: me, pid: x.pid, from: before, name: def(x.tid).name, mats: x.mats.length });
+    }
+  }
+  endDeploy(g);
+  await io.emit({ type: 'phase', owner: me, phase: 'action' });
+  for (let guard = 0; guard < 30; guard++) {
+    if (g.winner != null) return;
+    const ch = chooseAction(g, me, level, rng);
+    if (!ch) break;
+    const { pid, plan } = ch;
+    if (plan.order === 'ma') {
+      if (plan.move) {
+        const name = top(g.pieces[pid]).name;
+        move(g, pid, plan.move[0], plan.move[1]);
+        await io.emit({ type: 'move', owner: me, pid, name, r: plan.move[0], c: plan.move[1] });
+      }
+      if (plan.variant && g.pieces[pid] && g.winner == null) {
+        const t = plan.target || { type: 'all' };
+        const ok = legalAttacks(g, pid).find(v => v.variant === plan.variant);
+        if (ok && (ok.kind === 'all' || ok.targets.some(x => x.type === t.type && x.id === t.id && x.owner === t.owner))) await attack(g, io, pid, plan.variant, t);
+      }
+    } else {
+      const t = plan.target || { type: 'all' };
+      await attack(g, io, pid, plan.variant, t);
+      if (g.winner != null) return;
+      const s = choosePostMove(g, pid);
+      if (s && g.pieces[pid]) {
+        const name = top(g.pieces[pid]).name;
+        move(g, pid, s[0], s[1]);
+        await io.emit({ type: 'move', owner: me, pid, name, r: s[0], c: s[1] });
+      }
+    }
+    finishAct(g, pid);
+  }
+}
+
+const TT = {
+  ROWS, COLS, KING_POS, DEPLOY_SQ, TURN_LIMIT, FACES, SKILLS, SPECIALS, MOVE_NAME, MOVE_TEXT, CARDS, KINGS, DECKS,
+  def, isYokai, top, has, piecesOf, kingOwnerAt, occ, isDeploySq, inB,
+  newGame, startTurn, endTurn, reach, attackSquares, targetsFrom, levelOf,
+  deployTargets, deploy, evolve, endDeploy, autoMaterials, keepScore,
+  canAct, legalMoves, legalAttacks, attackVariants, startAct, finishAct, settle, move, attack, daikichiUser,
+  chooseAction, choosePostMove, chooseDeploys, cpuAnswer, cpuTurn,
+  hitProbs, dmgDist,
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = TT;
+else root.TT = TT;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+{
+const T = window.TT;
+const HUMAN = 0, CPU = 1;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SPEED = { fast: 260, normal: 620, slow: 1050 };
+const LEVEL_NAME = { easy: 'よわい', normal: 'ふつう', hard: 'つよい' };
+const WHO = p => (p === HUMAN ? 'あなた' : 'CPU');
+
+let settings = { deck: 'A', level: 'normal', first: 'you', speed: 'normal', sound: true };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('tsumiSettings') || '{}')); } catch (e) {}
+let g = null, busy = false, setupOpen = true, logs = [], seq = 0;
+let ui = { sel: null, hover: null, variant: 'normal', pick: null, dice: null };
+
+/* ---------- sound: everything is synthesised with Web Audio, no files ---------- */
+const Sound = (() => {
+  let ac = null, out = null, nb = null;
+  function ctx() {
+    if (!settings.sound) return null;
+    try {
+      if (!ac) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ac = new AC();
+        const comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
+        out = ac.createGain(); out.gain.value = 0.75;
+        out.connect(comp); comp.connect(ac.destination);
+        nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = nb.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ac.state === 'suspended') ac.resume().catch(() => {});
+      return ac.state === 'running' ? ac : null;
+    } catch (e) { return null; }
+  }
+  function env(gn, t, vol, atk, dur) {
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(vol, t + atk);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + atk + dur);
+  }
+  function tone(o) {
+    const a = ctx(); if (!a) return;
+    const t = a.currentTime + 0.01 + (o.at || 0), atk = o.atk || 0.004;
+    const osc = a.createOscillator(), gn = a.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.f, t);
+    if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + atk + o.dur);
+    if (o.vib) {
+      const l = a.createOscillator(), lg = a.createGain();
+      l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1];
+      l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + atk + o.dur + 0.05);
+    }
+    env(gn, t, o.vol, atk, o.dur);
+    osc.connect(gn); gn.connect(out);
+    osc.start(t); osc.stop(t + atk + o.dur + 0.05);
+  }
+  function noise(o) {
+    const a = ctx(); if (!a) return;
+    const t = a.currentTime + 0.01 + (o.at || 0), atk = o.atk || 0.002;
+    const src = a.createBufferSource(); src.buffer = nb; src.loop = true;
+    const fl = a.createBiquadFilter(); fl.type = o.ft || 'bandpass';
+    fl.frequency.setValueAtTime(o.f || 2000, t);
+    if (o.f2) fl.frequency.exponentialRampToValueAtTime(o.f2, t + atk + o.dur);
+    fl.Q.value = o.q || 1;
+    const gn = a.createGain(); env(gn, t, o.vol, atk, o.dur);
+    src.connect(fl); fl.connect(gn); gn.connect(out);
+    src.start(t, Math.random() * 0.5); src.stop(t + atk + o.dur + 0.05);
+  }
+  const S = {
+    unlock: () => { ctx(); },
+    click(at = 0, v = 1) {                          // one tile laid under the stack: カチ
+      noise({ at, dur: 0.035, vol: 0.3 * v, f: 2700, q: 2.5 });
+      tone({ at, f: 1150, f2: 700, dur: 0.035, vol: 0.1 * v, type: 'triangle' });
+    },
+    snap(at = 0) {                                  // the top tile lands: パチッ
+      noise({ at, dur: 0.05, vol: 0.55, f: 2200, q: 1.2 });
+      tone({ at, f: 260, f2: 115, dur: 0.11, vol: 0.45 });
+      tone({ at, f: 1500, f2: 900, dur: 0.04, vol: 0.12, type: 'triangle' });
+    },
+    place(n) { for (let i = 0; i < n - 1; i++) S.click(i * 0.065, 0.75); S.snap(Math.max(0, n - 1) * 0.065 + 0.02); },
+    evolve(n) {
+      S.place(n);
+      const t = Math.max(0, n - 1) * 0.065 + 0.12;
+      [784, 1047, 1319].forEach((f, i) => tone({ at: t + i * 0.07, f, dur: 0.22, vol: 0.12, type: 'triangle' }));
+    },
+    move() {                                        // slide, then a light tap: スッ…コトッ
+      noise({ dur: 0.14, vol: 0.12, ft: 'lowpass', f: 1800, f2: 450, q: 0.7, atk: 0.03 });
+      noise({ at: 0.14, dur: 0.03, vol: 0.28, f: 1700, q: 2 });
+      tone({ at: 0.14, f: 340, f2: 190, dur: 0.07, vol: 0.26 });
+    },
+    tick(p) {                                       // roulette tick, a little lower as it slows
+      noise({ dur: 0.02, vol: 0.3, f: 4000 - p * 1400, q: 3 });
+      tone({ f: 1900 - p * 600, dur: 0.018, vol: 0.035, type: 'square' });
+    },
+    stop() {                                        // the die settles: コン
+      noise({ dur: 0.04, vol: 0.28, f: 1800, q: 1.5 });
+      tone({ f: 520, f2: 300, dur: 0.1, vol: 0.24 });
+    },
+    face(k) {                                       // the face that came up
+      if (k === 'crit' || k === 'sure') {
+        [1047, 1319, 1568, 2093].forEach((f, i) => tone({ at: 0.05 + i * 0.065, f, dur: 0.24, vol: 0.15, type: 'triangle' }));
+        noise({ at: 0.05, dur: 0.32, vol: 0.05, ft: 'highpass', f: 6000 });
+      } else if (k === 'miss') {
+        tone({ at: 0.04, f: 420, f2: 150, dur: 0.48, vol: 0.2, type: 'triangle', vib: [7, 18] });
+      } else {
+        const f = { '-1': 523, '0': 587, '1': 659, '2': 784 }[k];
+        tone({ at: 0.03, f, dur: 0.24, vol: 0.22 });
+        tone({ at: 0.03, f: f * 2, dur: 0.14, vol: 0.06 });
+      }
+    },
+    reroll() { tone({ f: 620, f2: 1040, dur: 0.12, vol: 0.14, type: 'triangle' }); },
+    hit(n = 1) {                                    // damage: バシッ (heavier for 2+)
+      const big = n >= 2;
+      noise({ dur: big ? 0.12 : 0.08, vol: big ? 0.6 : 0.45, ft: 'highpass', f: 900 });
+      tone({ f: big ? 200 : 170, f2: 50, dur: big ? 0.22 : 0.15, vol: big ? 0.62 : 0.5 });
+      if (big) tone({ at: 0.08, f: 130, f2: 45, dur: 0.2, vol: 0.45 });
+    },
+    whiff() { noise({ dur: 0.2, vol: 0.3, f: 3200, f2: 700, q: 1.2, atk: 0.02 }); },
+    ko(at = 0) {                                    // a piece is knocked out: crash + falling tone + thud
+      noise({ at, dur: 0.5, vol: 0.42, ft: 'lowpass', f: 5000, f2: 240, q: 0.8 });
+      tone({ at, f: 660, f2: 85, dur: 0.55, vol: 0.1, type: 'square' });
+      tone({ at: at + 0.3, f: 140, f2: 45, dur: 0.26, vol: 0.5 });
+      noise({ at: at + 0.3, dur: 0.08, vol: 0.3, f: 900 });
+    },
+    flip() { noise({ dur: 0.05, vol: 0.42, f: 3500, q: 1.6 }); noise({ at: 0.06, dur: 0.07, vol: 0.34, f: 2600, q: 1.6 }); },
+    guard() { [1250, 1870, 2500].forEach(f => tone({ f, dur: 0.5, vol: 0.07 })); noise({ dur: 0.04, vol: 0.3, ft: 'highpass', f: 3000 }); },
+    kingDown() {                                    // a king tile falls: ドーン
+      tone({ f: 110, f2: 48, dur: 0.75, vol: 0.7 });
+      noise({ dur: 0.2, vol: 0.35, ft: 'lowpass', f: 420, q: 0.7 });
+      [392, 553, 698].forEach(f => tone({ at: 0.05, f, dur: 1.1, vol: 0.04 }));
+    },
+    special() {
+      noise({ dur: 0.28, vol: 0.18, ft: 'highpass', f: 1500, f2: 7000, atk: 0.04 });
+      tone({ f: 660, f2: 1760, dur: 0.25, vol: 0.12, type: 'triangle', atk: 0.02 });
+      tone({ at: 0.22, f: 2093, dur: 0.3, vol: 0.08 });
+    },
+    heal() { [784, 1175].forEach((f, i) => tone({ at: i * 0.09, f, dur: 0.25, vol: 0.14 })); },
+    clap(at = 0, f = 2500) {                        // one strike of hyoshigi (wooden clappers)
+      noise({ at, dur: 0.006, vol: 0.3, ft: 'highpass', f: 3500 });
+      noise({ at, dur: 0.11, vol: 0.62, f, q: 9 });
+      tone({ at, f: f * 0.93, dur: 0.09, vol: 0.17 });
+      tone({ at, f: f * 0.47, dur: 0.055, vol: 0.2, type: 'triangle' });
+    },
+    turn() { S.clap(0, 2450); S.clap(0.17, 2650); },  // your turn: カン、カン
+    toAction() {                                    // 行動フェイズへ: taiko ドン、ドン
+      tone({ f: 150, f2: 72, dur: 0.17, vol: 0.5 });
+      noise({ dur: 0.05, vol: 0.22, ft: 'lowpass', f: 320 });
+      tone({ at: 0.15, f: 172, f2: 76, dur: 0.28, vol: 0.62 });
+      noise({ at: 0.15, dur: 0.06, vol: 0.26, ft: 'lowpass', f: 340 });
+    },
+    endTurn() {                                     // ターンをおえる: a fusuma slides shut, トン
+      noise({ dur: 0.22, vol: 0.2, ft: 'lowpass', f: 950, f2: 320, q: 0.8, atk: 0.06 });
+      tone({ at: 0.25, f: 250, f2: 150, dur: 0.09, vol: 0.38 });
+      noise({ at: 0.25, dur: 0.03, vol: 0.28, f: 1200, q: 1.5 });
+    },
+    jkWin() { [587, 784, 1175].forEach((f, i) => tone({ at: i * 0.09, f, dur: i === 2 ? 0.35 : 0.14, vol: 0.22, type: 'triangle' })); },
+    jkLose() { tone({ f: 440, dur: 0.16, vol: 0.2, type: 'triangle' }); tone({ at: 0.17, f: 330, f2: 300, dur: 0.42, vol: 0.2, type: 'triangle', vib: [6, 9] }); },
+    order(mine) {                                   // the big 先攻 / 後攻 stamp
+      tone({ f: 120, f2: 52, dur: 0.55, vol: 0.68 });
+      noise({ dur: 0.12, vol: 0.32, ft: 'lowpass', f: 380, q: 0.7 });
+      if (mine) {
+        noise({ at: 0.05, dur: 0.45, vol: 0.05, ft: 'highpass', f: 6500 });
+        [1175, 1568].forEach((f, i) => tone({ at: 0.08 + i * 0.08, f, dur: 0.32, vol: 0.1, type: 'triangle' }));
+      }
+    },
+    win() { [587, 659, 784, 880, 988, 1175].forEach((f, i) => tone({ at: i * 0.11, f, dur: i === 5 ? 0.6 : 0.16, vol: 0.26, type: 'triangle' })); },
+    lose() { [440, 392, 330, 294].forEach((f, i) => tone({ at: i * 0.2, f, dur: i === 3 ? 0.7 : 0.25, vol: 0.23, type: 'triangle' })); },
+  };
+  return S;
+})();
+for (const ev of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(ev, () => Sound.unlock(), { capture: true, passive: true });
+
+/* ---------- logging ---------- */
+const drawText = n => (n ? `山札から${n}枚引いた` : '山札がないので引かない');
+function log(owner, text) {
+  logs.unshift({ id: ++seq, cls: owner === HUMAN ? 'you' : owner === CPU ? 'cpu' : 'sys', who: owner == null ? '' : WHO(owner), text });
+  if (logs.length > 120) logs.length = 120;
+}
+const faceLabel = fi => (fi < 0 ? '必中' : T.FACES[fi].label);
+const pname = pid => (g.pieces[pid] ? T.top(g.pieces[pid]).name : '');
+function dieLine(ev) {
+  const f = T.FACES[ev.face];
+  if (!f || f.k === 'miss' || f.k === 'crit') return '';
+  return `（攻撃${ev.atk}${f.k >= 0 ? '＋' + f.k : '−' + -f.k}＝${ev.atk + f.k} / 防御${ev.dfn}）`;
+}
+
+/* ---------- engine io (bound to one game, so an abandoned game goes quiet) ---------- */
+function makeIO(game) {
+  const live = () => game === g;
+  return {
+    roll: async info => {
+      const fi = Math.floor(Math.random() * 6);
+      if (live()) await rollDie(fi, info);
+      return fi;
+    },
+    ask: (p, kind, data) => (p === HUMAN && live() ? askHuman(kind, data) : Promise.resolve(T.cpuAnswer(game, p, kind, data))),
+    emit: async ev => { if (live()) await emit(ev); },
+  };
+}
+async function emit(ev) {
+  {
+    const w = ev.owner;
+    const pace = g.cur === CPU ? SPEED[settings.speed] : 380;
+    let wait = 0;
+    switch (ev.type) {
+      case 'deploy': log(w, `${ev.name}を出陣（${ev.mats + 1}枚つみ）`); Sound.place(ev.mats + 1); wait = pace + ev.mats * 65; break;
+      case 'evolve': log(w, `${ev.from}が${ev.name}に成った`); Sound.evolve(ev.mats + 1); wait = pace + ev.mats * 65; break;
+      case 'phase': wait = pace * 0.4; break;
+      case 'move': log(w, `${ev.name}が移動`); Sound.move(); wait = pace * 0.8; break;
+      case 'special': log(w, `${ev.aName}の必殺技「${ev.sp.name}」（HP−${ev.sp.cost}）`); setDice(null, `${ev.aName}の必殺技`, `「${ev.sp.name}」`); Sound.special(); wait = pace; break;
+      case 'sure': setDice(-1, `${ev.aName} → ${ev.tName}`, '必中：ダイスなしで命中'); Sound.face('sure'); wait = Math.max(pace * 0.5, 300); break;
+      case 'reroll': log(w, `${ev.aName}は「さぼらない」：ふり直し`); setDice(0, `${ev.aName}は さぼらない！`, 'ダイスをふり直す'); Sound.reroll(); wait = pace * 0.7; break;
+      case 'daikichi': log(w, '大吉スマイル！「さぼる」が「クリティカル」に'); setDice(5, '大吉スマイル！', '「さぼる」→「クリティカル」'); Sound.special(); Sound.face('crit'); wait = pace; break;
+      case 'critNull': log(w, `${ev.tName}のクリティカル無効：クリティカル→さぼる`); setDice(0, `${ev.tName}のクリティカル無効`, '「クリティカル」→「さぼる」'); Sound.face('miss'); wait = pace; break;
+      case 'hit': {
+        const res = ev.res;
+        let r = ev.success ? `成功 ${ev.amount}ダメージ` : '失敗';
+        if (res.ko) r += `、${ev.tName}は気絶！`;
+        const tag = ev.of > 1 ? `（${ev.n}/${ev.of}回目）` : '';
+        log(w, `${ev.aName}→${ev.tName}${tag}：${faceLabel(ev.face)}${dieLine(ev)} ${r}`);
+        setDice(ev.face, `${ev.aName} → ${ev.tName}${tag}`, `<span class="calc">${dieLine(ev)}</span><span class="${ev.success ? 'ok' : 'ng'}">${r}</span>`);
+        fx(ev.tid, ev.success ? `−${res.dealt}` : 'ミス', res.ko);
+        if (ev.success) { Sound.hit(ev.amount); if (res.ko) Sound.ko(0.12); } else Sound.whiff();
+        wait = res.ko ? Math.max(pace, 700) : pace;
+        break;
+      }
+      case 'kingMiss': log(w, `${ev.aName}の王手：さぼる（失敗）`); setDice(ev.face, `${ev.aName} → 王将`, '<span class="ng">さぼる：王手失敗</span>'); wait = pace; break;
+      case 'kingReveal': { const kd = T.def(ev.kt); log(w, `${ev.aName}の王手：${faceLabel(ev.face)}で成功。王将「${kd.name}」が表に`); setDice(ev.face, `${ev.aName} → 王将`, `<span class="ok">王手成功</span> 王将「${kd.name}（${kd.by}）」`); Sound.flip(); wait = pace * 1.2; break; }
+      case 'guard': log(1 - w, '王将「まもり」：ダイスが−1か±0なので王将はもどった'); setDice(null, '王将「まもり」', '−1か±0の攻撃なので倒されない'); Sound.guard(); wait = pace; break;
+      case 'kingDown': log(w, `${WHO(ev.king)}の王将を1枚倒した（のこり${ev.left}）`); Sound.kingDown(); wait = Math.max(pace * 0.6, 500); break;
+      case 'kingDmg': log(ev.owner, `王将「${ev.kd.name}」：${ev.name}に${ev.amount}ダメージ${ev.res.ko ? '、気絶！' : ''}`); Sound.hit(ev.amount); if (ev.res.ko) Sound.ko(0.12); wait = ev.res.ko ? Math.max(pace, 700) : pace; break;
+      case 'kingNoEffect': log(ev.owner, `王将「${ev.kd.name}」：${ev.skipped ? '使わなかった' : '対象なし'}`); wait = pace * 0.5; break;
+      case 'forceMove': log(ev.owner, `王将「${ev.kd.name}」：${ev.name}を動かした`); Sound.move(); wait = pace; break;
+      case 'drainHit': log(w, `${ev.aName}が${ev.tName}に1ダメージ${ev.res.ko ? '、気絶！' : ''}`); setDice(-1, `${ev.aName} → ${ev.tName}`, '<span class="ok">1ダメージ</span>'); Sound.hit(1); if (ev.res.ko) Sound.ko(0.12); wait = ev.res.ko ? Math.max(pace, 700) : pace; break;
+      case 'heal': log(w, `${ev.name}のHPが1回復`); Sound.heal(); wait = pace * 0.6; break;
+      default: break;
+    }
+    render();
+    if (wait) await sleep(reduced ? Math.min(wait, 250) : wait);
+  }
+}
+
+function setDice(face, l1, l2) {
+  const same = ui.dice && !ui.dice.rolling && ui.dice.face === face;
+  ui.dice = { face, l1, l2, rolling: false, landAt: same ? 0 : performance.now() };
+}
+const ROLL_MS = { fast: 650, normal: 1000, slow: 1300 };
+const faceCls = k => (k === 'miss' ? 'sm miss' : k === 'crit' || k === 'sure' ? 'sm crit' : '');
+function showFace(i) {                       // update the spinning die and the face track in place
+  ui.dice.cur = i;
+  const d = $('#die');
+  if (d) { d.textContent = T.FACES[i].label; d.className = 'die ' + faceCls(T.FACES[i].k); }
+  document.querySelectorAll('#track li').forEach((li, j) => li.classList.toggle('on', j === i));
+}
+async function rollDie(fi, info) {
+  const king = info.king != null;
+  const l1 = king ? `${info.aName} → 王将` : `${info.aName} → ${info.tName}`;
+  const l2 = king ? '王手：「さぼる」以外なら成功' : `<span class="calc">攻撃レベル${info.atk} と 防御レベル${info.dfn}</span>`;
+  // roulette: the faces go round in order, each step a little slower, and stop on the result
+  let total = g.cur === CPU ? ROLL_MS[settings.speed] : ROLL_MS.normal;
+  if (info.n > 1) total *= 0.75;
+  const steps = [];
+  for (let t = 0, iv = 40; t + iv <= total; t += iv, iv *= 1.16) steps.push(iv);
+  if (reduced) steps.length = 0;
+  const start = ((fi - steps.length) % 6 + 6) % 6;
+  ui.dice = { face: null, l1, l2, rolling: true, cur: start };
+  renderCtrl();
+  const die = $('#die');
+  if (steps.length && die && die.animate) {
+    const dur = steps.reduce((a, b) => a + b, 0);
+    die.animate([
+      { transform: 'rotate(0deg) scale(1.04)' },
+      { transform: 'rotate(385deg) scale(1.06)', offset: 0.86 },
+      { transform: 'rotate(352deg) scale(1)', offset: 0.95 },
+      { transform: 'rotate(360deg) scale(1)' },
+    ], { duration: dur + 90, easing: 'cubic-bezier(.15,.7,.3,1)' });
+  }
+  for (let i = 0; i < steps.length; i++) {
+    await sleep(steps[i]);
+    showFace((start + i + 1) % 6);
+    if (i < steps.length - 1) Sound.tick(i / steps.length);
+  }
+  Sound.stop();
+  Sound.face(T.FACES[fi].k);
+  ui.dice = { face: fi, l1, l2, rolling: false, landAt: performance.now() };
+  render();
+  await sleep(reduced ? 150 : 430);
+}
+
+/* ---------- effects on board pieces ---------- */
+let pendingFx = [];
+function fx(pid, text, ko) { pendingFx.push({ pid, text, ko }); }
+
+/* ---------- rendering ---------- */
+function render() {
+  renderStands();
+  renderBoard();
+  if (!(ui.dice && ui.dice.rolling)) renderCtrl();
+  renderInfo();
+  renderLog();
+}
+
+function tileHTML(id, o) {
+  const d = T.def(id);
+  const king = !T.isYokai(id);
+  const cls = ['tile', king ? 'kt' : '', o.can ? 'can' : '', o.on ? 'on' : '', o.dim ? 'dim' : ''].join(' ');
+  const nm = king ? d.name : d.name;
+  const tag = o.button ? 'button' : 'div';
+  const attrs = o.button ? `type="button" ${o.can ? '' : 'aria-disabled="true"'}` : '';
+  return `<${tag} class="${cls}" data-tile="${id}" ${attrs} title="${esc(king ? '王将 ' + d.name : d.name)}">
+    <span class="tf"><span class="mk">${king ? '王' : d.mark}</span><span class="nm${nm.length >= 6 ? ' l6' : ''}">${esc(d.name)}</span></span>
+    <span class="lvb">${king ? '王' : d.lv}</span>${king ? '' : mvBadge(d.mv)}</${tag}>`;
+}
+// small arrow badge: 歩 = たて・よこ, 斜 = 8方向, 飛 = たて・よこ（飛び越え）, number = マス数
+function mvBadge(mv) {
+  return `<span class="mvb m-${mv.t}" aria-hidden="true"><svg viewBox="0 0 20 20"><use href="#mv-${mv.t}"/></svg><b>${mv.n}</b></span>`;
+}
+
+function renderStands() {
+  for (const p of [CPU, HUMAN]) {
+    const box = p === CPU ? $('#standCpu') : $('#standYou');
+    const deckKey = g ? T.DECKS[g.players[p].deck].key : p === HUMAN ? settings.deck : (settings.deck === 'A' ? 'B' : 'A');
+    const dk = T.DECKS[deckKey];
+    let html = `<h2><b>${p === HUMAN ? 'あなた' : 'CPU'}</b><span class="dn">${dk.name}</span></h2>`;
+    if (!g) {
+      html += `<p class="hand"><span class="empty">対戦をはじめると手元の駒がならびます。</span></p>`;
+      box.innerHTML = html;
+      continue;
+    }
+    const pl = g.players[p];
+    html += `<dl class="stats"><div><dt>王将</dt><dd>${pl.kings.length}</dd></div><div><dt>気絶</dt><dd class="${pl.ko.length >= 4 ? 'warn' : ''}">${pl.ko.length}/6</dd></div><div><dt>山札</dt><dd>${pl.draw.length}</dd></div></dl>`;
+    const deployMode = p === HUMAN && !busy && g.phase === 'deploy' && g.cur === HUMAN && g.winner == null && !ui.pick;
+    const tiles = pl.hand.map(id => {
+      const can = deployMode && T.isYokai(id);
+      return tileHTML(id, { can, on: ui.sel && ui.sel.kind === 'tile' && ui.sel.id === id, button: p === HUMAN });
+    }).join('');
+    html += `<div class="hand" aria-label="手元">${tiles || '<span class="empty">手元の駒はありません</span>'}</div>`;
+    if (pl.ko.length) html += `<div class="kos"><span>気絶：</span>${pl.ko.map(id => `<span class="mini">${esc(T.def(id).name)}</span>`).join('')}</div>`;
+    box.innerHTML = html;
+  }
+}
+
+function boardMarks() {
+  const m = { mv: new Set(), dp: new Set(), tg: new Set(), evo: new Set(), pk: new Set(), pkSq: new Set(), kingTg: new Set() };
+  if (!g || g.winner != null) return m;
+  if (ui.pick) {
+    const pk = ui.pick;
+    if (pk.step === 'piece') pk.pieces.forEach(id => m.pk.add(id));
+    if (pk.step === 'square') pk.squares.forEach(([r, c]) => m.pkSq.add(r * 3 + c));
+    return m;
+  }
+  if (busy || g.cur !== HUMAN) return m;
+  const s = ui.sel;
+  if (g.phase === 'deploy' && s && s.kind === 'tile') {
+    const dt = T.deployTargets(g, HUMAN, s.id);
+    dt.squares.forEach(([r, c]) => m.dp.add(r * 3 + c));
+    dt.evolves.forEach(e => m.evo.add(e.pid));
+  }
+  if (g.phase === 'action' && s && s.kind === 'piece' && T.canAct(g, s.id) && g.pieces[s.id].owner === HUMAN) {
+    T.legalMoves(g, s.id).forEach(([r, c]) => m.mv.add(r * 3 + c));
+    const v = currentVariant(s.id);
+    if (v && v.kind !== 'all') v.targets.forEach(t => (t.type === 'king' ? m.kingTg.add(t.owner) : m.tg.add(t.id)));
+  }
+  return m;
+}
+function currentVariant(pid) {
+  const list = T.legalAttacks(g, pid);
+  return list.find(v => v.variant === ui.variant) || list.find(v => v.variant === 'normal') || null;
+}
+
+function renderBoard() {
+  const m = boardMarks();
+  let cells = '';
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) {
+    const key = r * 3 + c;
+    const cls = ['cell', m.mv.has(key) ? 'mv' : '', m.dp.has(key) ? 'dp' : '', m.pkSq.has(key) ? 'pk' : ''].join(' ');
+    const lab = T.isDeploySq(HUMAN, r, c) || T.isDeploySq(CPU, r, c) ? '<span class="lab">出陣</span>' : '';
+    const act = m.mv.has(key) || m.dp.has(key) || m.pkSq.has(key);
+    cells += `<div class="${cls}" data-r="${r}" data-c="${c}" ${act ? 'tabindex="0" role="button" aria-label="' + (r + 1) + '段' + (c + 1) + '筋"' : ''}>${lab}</div>`;
+  }
+  $('#cells').innerHTML = cells;
+
+  const layer = $('#layer');
+  const seen = new Set();
+  // kings
+  for (const p of [HUMAN, CPU]) {
+    const [r, c] = T.KING_POS[p];
+    const id = 'king' + p;
+    seen.add(id);
+    let el = layer.querySelector(`[data-key="${id}"]`);
+    if (!el) { el = document.createElement('div'); el.dataset.key = id; layer.appendChild(el); }
+    const n = g ? g.players[p].kings.length : 3;
+    const open = g && g.players[p].kingOpen && n ? T.def(g.players[p].kings[n - 1]) : null;
+    el.className = `king ${p === HUMAN ? 'you' : 'cpu'}${m.kingTg.has(p) ? ' tg' : ''}`;
+    el.style.setProperty('--r', r); el.style.setProperty('--c', c);
+    el.dataset.r = r; el.dataset.c = c; el.dataset.king = p;
+    el.tabIndex = m.kingTg.has(p) ? 0 : -1;
+    el.setAttribute('aria-label', `${WHO(p)}の王将 のこり${n}枚`);
+    el.innerHTML = (n > 1 ? '<span class="kb kb2"></span>' : '') + (n ? `<span class="kb"></span><span class="kmk">王</span><span class="kn">×${n}</span>` : '') +
+      (open ? `<span class="rev">表：${esc(open.name)}</span>` : '');
+  }
+  // pieces
+  const pcs = g ? Object.values(g.pieces) : [];
+  for (const pc of pcs) {
+    seen.add(pc.id);
+    let el = layer.querySelector(`[data-key="${pc.id}"]`);
+    const fresh = !el;
+    if (fresh) { el = document.createElement('div'); el.dataset.key = pc.id; layer.appendChild(el); }
+    const card = T.top(pc);
+    const h = pc.stack.length;
+    const mine = pc.owner === HUMAN;
+    const actPhase = g.phase === 'action' && g.cur === pc.owner;
+    const cls = ['pc', mine ? 'you' : 'cpu',
+      ui.sel && ui.sel.kind === 'piece' && ui.sel.id === pc.id ? 'sel' : '',
+      g.active === pc.id ? 'act' : '', actPhase && pc.done ? 'done' : '',
+      m.tg.has(pc.id) ? 'tg' : '', m.evo.has(pc.id) ? 'evo' : '', m.pk.has(pc.id) ? 'pk' : ''];
+    el.className = cls.join(' ');
+    el.style.setProperty('--r', pc.r); el.style.setProperty('--c', pc.c); el.style.setProperty('--h', h);
+    el.dataset.r = pc.r; el.dataset.c = pc.c; el.dataset.pid = pc.id;
+    el.tabIndex = mine || m.tg.has(pc.id) || m.pk.has(pc.id) || m.evo.has(pc.id) ? 0 : -1;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', `${WHO(pc.owner)}の${card.name} レベル${card.lv} HP${h}/${card.lv} 移動${T.MOVE_NAME[card.mv.t]}${card.mv.n}`);
+    let lyr = '';
+    for (let i = h - 1; i >= 1; i--) lyr += `<span class="lyr" style="--i:${i}"></span>`;
+    const pips = Array.from({ length: card.lv }, (_, i) => `<i class="${i < h ? 'on' : ''}"></i>`).join('');
+    el.innerHTML = `${lyr}<span class="face"><span class="mk">${card.mark}</span><span class="nm${card.name.length >= 6 ? ' l6' : ''}">${esc(card.name)}</span><span class="pips">${pips}</span></span><span class="lvb">${card.lv}</span>${mvBadge(card.mv)}`;
+  }
+  for (const el of [...layer.children]) {
+    const k = el.dataset.key;
+    if (seen.has(k) || el.classList.contains('gone')) continue;
+    el.classList.add('gone');
+    el.style.pointerEvents = 'none';
+    setTimeout(() => el.remove(), 480);
+  }
+  for (const f of pendingFx) {
+    const el = layer.querySelector(`[data-key="${f.pid}"]`);
+    if (!el) continue;
+    el.classList.remove('hurt'); void el.offsetWidth; if (f.text !== 'ミス') el.classList.add('hurt');
+    const s = document.createElement('span');
+    s.className = 'dmgpop'; s.textContent = f.ko ? '気絶！' : f.text;
+    el.appendChild(s);
+    setTimeout(() => s.remove(), 950);
+  }
+  pendingFx = [];
+}
+
+function diceHTML() {
+  const d = ui.dice;
+  const hl = !d ? -1 : d.rolling ? d.cur : d.face == null ? -1 : d.face;
+  const track = `<ol class="track" id="track" aria-hidden="true">${T.FACES.map((f, i) => `<li class="${f.k === 'crit' ? 'c' : f.k === 'miss' ? 'm' : ''}${i === hl ? ' on' : ''}">${f.label}</li>`).join('')}</ol>`;
+  if (!d) return `<div class="dice idle"><div class="die sm" id="die">ダイス</div><div class="dtx">攻撃するとダイスをふります。6つの目が同じ確率で出ます。</div>${track}</div>`;
+  let label, cls;
+  if (d.rolling) { const f = T.FACES[d.cur]; label = f.label; cls = faceCls(f.k); }
+  else if (d.face == null) { label = '技'; cls = 'sm'; }
+  else if (d.face < 0) { label = '必中'; cls = 'sm crit'; }
+  else { const f = T.FACES[d.face]; label = f.label; cls = faceCls(f.k); }
+  const land = !d.rolling && d.landAt && performance.now() - d.landAt < 200 ? ' land' : '';
+  return `<div class="dice"><div class="die ${cls}${land}" id="die">${label}</div><div class="dtx"><b>${d.l1 || ''}</b>${d.l2 || ''}</div>${track}</div>`;
+}
+
+function renderCtrl() {
+  const box = $('#ctrl');
+  box.classList.toggle('setupmode', setupOpen || !g);
+  if (setupOpen || !g) { box.innerHTML = setupHTML(); return; }
+  const mineTurn = g.cur === HUMAN;
+  let html = `<div class="turnline"><strong>第${g.turn}ターン</strong><span class="who ${mineTurn ? 'you' : 'cpu'}">${mineTurn ? 'あなたの番' : 'CPUの番'}</span><ol class="phases"><li class="${g.phase === 'deploy' ? 'on' : ''}">出陣</li><li class="${g.phase === 'action' ? 'on' : ''}">行動</li></ol></div>`;
+  let hint = '', btns = '';
+  if (g.winner != null) {
+    hint = g.winner === 2 ? '引き分けで終わりました。' : g.winner === HUMAN ? 'あなたの勝ちです。' : 'CPUの勝ちです。';
+    btns = `<button class="btn main" type="button" data-act="again">同じ設定でもう一度</button><button class="btn" type="button" data-act="setup">設定を変える</button>`;
+  } else if (ui.pick) {
+    hint = ui.pick.title;
+    if (ui.pick.skip) btns = `<button class="btn" type="button" data-act="pickSkip">${ui.pick.skip}</button>`;
+    if (ui.pick.step === 'square') btns += `<button class="btn" type="button" data-act="pickBack">駒をえらび直す</button>`;
+  } else if (!mineTurn || busy) {
+    hint = mineTurn ? '判定中…' : 'CPUが考えています…';
+  } else if (g.phase === 'deploy') {
+    const s = ui.sel && ui.sel.kind === 'tile' ? ui.sel.id : null;
+    if (s && !T.isYokai(s)) {
+      hint = '王将の駒は出陣できません。ほかの妖怪を出すときに、下につむ駒として使えます。';
+    } else if (s) {
+      const d = T.def(s);
+      const dt = T.deployTargets(g, HUMAN, s);
+      const have = g.players[HUMAN].hand.length;
+      const base = d.from && T.piecesOf(g, HUMAN).some(q => T.top(q).name === d.from);
+      if (dt.squares.length || dt.evolves.length) {
+        const where = [dt.squares.length ? '赤い点線の出陣マス' : '', dt.evolves.length ? '「成り」の付いた駒' : ''].filter(Boolean).join('か');
+        hint = `${d.name}（レベル${d.lv}）：${where}をクリック。`;
+      } else if (have < d.lv && !base) {
+        hint = `${d.name}はレベル${d.lv}なので、手元の駒が${d.lv}枚いります（いま${have}枚）。${d.from ? `場に${d.from}がいれば「成り」でも出せます。` : ''}`;
+      } else if (have < d.lv) {
+        hint = `${d.name}に成るには、手元の駒がもう少し必要です。`;
+      } else {
+        hint = '出陣マスがあいていません。駒を動かしてあけると、次のターンに出陣できます。';
+      }
+    } else {
+      hint = '手元の妖怪をえらんで出陣。レベルの数だけ駒をつみます（つんだ枚数がHP）。';
+    }
+    btns = `<button class="btn main" type="button" data-act="endDeploy">行動フェイズへ</button>`;
+  } else {
+    const s = ui.sel && ui.sel.kind === 'piece' && g.pieces[ui.sel.id] && g.pieces[ui.sel.id].owner === HUMAN ? ui.sel.id : null;
+    if (s && T.canAct(g, s)) {
+      const pc = g.pieces[s];
+      const parts = [];
+      if (!pc.moved) parts.push('黒い点へ移動');
+      if (!pc.attacked) parts.push('赤い輪を攻撃');
+      hint = `${T.top(pc).name}：${parts.join('、') || 'この駒の行動はおわりです'}${!pc.moved && !pc.attacked ? '（順番は自由）' : ''}。`;
+      for (const v of T.legalAttacks(g, s)) {
+        if (v.variant === 'normal') continue;
+        const sp = T.SPECIALS[v.variant];
+        btns += `<button class="btn sp ${ui.variant === v.variant ? 'on' : ''}" type="button" data-act="sp" data-v="${v.variant}">必殺技「${sp.name}」HP−${sp.cost}</button>`;
+      }
+      if (pc.moved || pc.attacked) btns += `<button class="btn" type="button" data-act="endPiece">この駒の行動をおえる</button>`;
+      if (ui.variant !== 'normal' && T.SPECIALS[ui.variant] && T.SPECIALS[ui.variant].kind !== 'all') hint = `必殺技「${T.SPECIALS[ui.variant].name}」：赤い輪の相手をクリック。もう一度ボタンを押すとやめます。`;
+    } else {
+      const left = T.piecesOf(g, HUMAN).filter(q => !q.done).length;
+      hint = left ? `動かす自分の駒をえらんでください（あと${left}体）。` : 'もう動ける駒はいません。ターンをおえましょう。';
+    }
+    btns += `<button class="btn main" type="button" data-act="endTurn">ターンをおえる</button>`;
+  }
+  const sum = selSummary();
+  html += `<p class="hint">${hint}</p>${sum ? `<p class="selsum">${sum}</p>` : ''}<div class="dock">${diceHTML()}<div class="btns">${btns}</div></div>`;
+  box.innerHTML = html;
+}
+
+function selSummary() {
+  const s = ui.sel;
+  if (!s || ui.pick || !g) return '';
+  if (s.kind === 'piece' && g.pieces[s.id]) {
+    const pc = g.pieces[s.id], c = T.top(pc);
+    if (pc.owner === HUMAN && g.cur === HUMAN && g.phase === 'action' && !pc.done) return '';
+    const sk = c.skills.map(k => T.SKILLS[k].name).concat(c.sp ? ['必殺「' + T.SPECIALS[c.sp].name + '」'] : []).join('、');
+    return `${WHO(pc.owner)}の${esc(c.name)}：レベル${c.lv}、HP${pc.stack.length}/${c.lv}、${T.MOVE_NAME[c.mv.t]}${c.mv.n}${sk ? '、' + sk : ''}`;
+  }
+  if (s.kind === 'tile' && !T.isYokai(s.id)) { const k = T.def(s.id); return `王将「${esc(k.name)}」：${k.text}`; }
+  return '';
+}
+function setupHTML() {
+  const radio = (name, val, label, sub) => `<label class="opt ${name === 'deck' ? 'deckopt' : ''}"><input type="radio" name="${name}" value="${val}" ${settings[name] === val ? 'checked' : ''}><span>${label}${sub ? `<small>${sub}</small>` : ''}</span></label>`;
+  const list = k => T.DECKS[k].yokai.map(no => T.CARDS[no].name).filter((n, i, a) => a.indexOf(n) === i).slice(0, 12).join('、');
+  return `<form class="setup" id="setupForm">
+    <h2>対戦の設定</h2>
+    <fieldset><legend>あなたのデッキ（CPUはもう一方）</legend><div class="opts">
+      ${radio('deck', 'A', '大ガマ・キュウビ組', list('A'))}
+      ${radio('deck', 'B', '土蜘蛛・オロチ組', list('B'))}</div></fieldset>
+    <fieldset><legend>CPUの強さ</legend><div class="opts">${radio('level', 'easy', 'よわい')}${radio('level', 'normal', 'ふつう')}${radio('level', 'hard', 'つよい')}</div></fieldset>
+    <fieldset><legend>先攻</legend><div class="opts">${radio('first', 'you', 'あなた')}${radio('first', 'cpu', 'CPU')}${radio('first', 'random', 'じゃんけん')}</div></fieldset>
+    <fieldset><legend>CPUの速さ</legend><div class="opts">${radio('speed', 'fast', 'はやい')}${radio('speed', 'normal', 'ふつう')}${radio('speed', 'slow', 'ゆっくり')}</div></fieldset>
+    <div class="btns"><button class="btn main" type="submit">対戦をはじめる</button>${g && g.winner == null ? '<button class="btn" type="button" data-act="closeSetup">対戦にもどる</button>' : ''}</div>
+  </form>`;
+}
+
+function skillRows(card) {
+  let rows = `<dt>移動</dt><dd>${T.MOVE_NAME[card.mv.t]}${card.mv.n}：${T.MOVE_TEXT[card.mv.t].replace('進む', card.mv.n + 'マスまで進む')}駒の角の矢印マークが向きとマス数です。</dd>`;
+  for (const s of card.skills) rows += `<dt>スキル</dt><dd>「${T.SKILLS[s].name}」${T.SKILLS[s].text}</dd>`;
+  if (card.sp) { const sp = T.SPECIALS[card.sp]; rows += `<dt>必殺技</dt><dd>「${sp.name}」HP−${sp.cost}：${sp.text}</dd>`; }
+  if (card.from) rows += `<dt>成り</dt><dd>場の${card.from}の上に重ねて成れる。成ったあとのHPは${card.lv}。</dd>`;
+  return rows;
+}
+function renderInfo() {
+  const box = $('#info');
+  const t = ui.hover || ui.sel;
+  let html = '<h2>駒の説明</h2>';
+  if (t && t.kind === 'piece' && g && g.pieces[t.id]) {
+    const pc = g.pieces[t.id];
+    const card = T.top(pc);
+    const atk = T.levelOf(g, pc, 'atk', null, pc.moved);
+    const atkMv = card.skills.includes('assault3') && !pc.moved ? `（移動後は${T.levelOf(g, pc, 'atk', null, true)}）` : '';
+    const dfn = T.levelOf(g, pc, 'def');
+    html += `<div class="card"><div class="big">${card.mark}</div><h3>${esc(card.name)}</h3><div class="sub">${WHO(pc.owner)}の駒／レベル${card.lv}／${card.tribe}／${card.rare} ${card.no}</div></div>
+      <dl><dt>いま</dt><dd>HP ${pc.stack.length}/${card.lv}、攻撃レベル${atk}${atkMv}、防御レベル${dfn}</dd>${skillRows(card)}</dl>`;
+  } else if (t && t.kind === 'tile' && g) {
+    const d = T.def(t.id);
+    if (T.isYokai(t.id)) html += `<div class="card"><div class="big">${d.mark}</div><h3>${esc(d.name)}</h3><div class="sub">レベル${d.lv}／${d.tribe}／${d.rare} ${d.no}</div></div><dl>${skillRows(d)}</dl>`;
+    else html += `<div class="card"><div class="big">王</div><h3>王将「${esc(d.name)}」</h3><div class="sub">${esc(d.by)}の王将 ${d.no}</div></div><dl><dt>効果</dt><dd>${d.text}</dd></dl><p class="note">倒された王将は手元にもどります。出陣はできませんが、つむ駒として使えます。</p>`;
+  } else if (t && t.kind === 'king' && g) {
+    const pl = g.players[t.id];
+    const set = T.DECKS[pl.deck].kings.map(no => T.KINGS[no]);
+    html += `<div class="card"><div class="big">王</div><h3>${WHO(t.id)}の王将</h3><div class="sub">のこり${pl.kings.length}枚</div></div>
+      <dl><dt>王手</dt><dd>「さぼる」以外の目なら成功。1回で1枚だけ倒せて、スキルや必殺技は効かない。</dd>${set.map(k => `<dt>${esc(k.name)}</dt><dd>${k.text}</dd>`).join('')}</dl><p class="note">裏向きの王将は、倒されて表になったときに効果が出ます。</p>`;
+  } else {
+    html += `<p class="note">駒にカーソルを合わせる（スマホではタップ）と、くわしい説明が出ます。</p>
+      <dl class="legend">
+        <dt><span class="lvb sample">3</span></dt><dd>レベル。攻撃と防御の強さで、出陣するときにつむ枚数。</dd>
+        <dt>${mvBadge({ t: 'step', n: 2 })}</dt><dd>歩：たて・よこに進める。数字は進めるマス数（ななめは2歩）。</dd>
+        <dt>${mvBadge({ t: 'slide', n: 1 })}</dt><dd>斜：ななめにも1歩で進める。</dd>
+        <dt>${mvBadge({ t: 'fly', n: 2 })}</dt><dd>飛：たて・よこに進み、駒を飛び越えられる。</dd>
+        <dt><span class="pips sample"><i class="on"></i><i class="on"></i><i></i></span></dt><dd>のこりHP。駒の下の重なりもHPの枚数です。</dd>
+      </dl>`;
+  }
+  box.innerHTML = html;
+}
+function renderLog() {
+  $('#log').innerHTML = logs.slice(0, 80).map(l => `<li class="${l.cls}">${l.who ? `<span class="t">${l.who}</span>` : ''}${esc(l.text)}</li>`).join('');
+}
+
+/* ---------- dialogs ---------- */
+const dlg = $('#dlg');
+function openDialog(html, onClick) {
+  dlg._cancel = null; dlg._noEsc = false;
+  $('#dlgBody').className = 'dlg';
+  $('#dlgBody').innerHTML = html;
+  dlg._onClick = onClick;
+  if (!dlg.open) dlg.showModal();
+}
+function closeDialog() { if (dlg.open) dlg.close(); dlg._onClick = null; }
+dlg.addEventListener('click', e => {
+  if (e.target === dlg && dlg._cancel) { dlg._cancel(); return; }
+  const b = e.target.closest('[data-d]');
+  if (b && dlg._onClick) dlg._onClick(b.dataset.d, b);
+});
+dlg.addEventListener('cancel', e => { if (dlg._cancel) { e.preventDefault(); dlg._cancel(); } else if (dlg._noEsc) e.preventDefault(); });
+
+function materialsDialog(tid, mode, target) {
+  const d = T.def(tid);
+  const pl = g.players[HUMAN];
+  const need = mode === 'deploy' ? d.lv - 1 : target.need;
+  let chosen = T.autoMaterials(g, HUMAN, need, [tid]);
+  const others = pl.hand.filter(id => id !== tid);
+  const title = mode === 'deploy' ? `${d.name}を出陣（レベル${d.lv}）` : `${T.top(g.pieces[target.pid]).name}を${d.name}に成らせる`;
+  const lead = mode === 'deploy'
+    ? `下につむ駒を${need}枚えらんでください。つんだ駒はHPになり、ダメージを受けると手元にもどります。`
+    : `いまの駒（HP${g.pieces[target.pid].stack.length}）の上に${d.name}を重ねます。HPが${d.lv}になるよう、あと${need}枚つみます。`;
+  const draw = () => {
+    openDialog(`<h2>${esc(title)}</h2><p>${lead}</p>
+      <div class="hand">${others.map(id => tileHTML(id, { can: true, on: chosen.includes(id), button: true }).replace('data-tile', 'data-d="t" data-tile')).join('')}</div>
+      <p><b>${chosen.length}/${need}枚</b>えらび中</p>
+      <div class="row"><button class="btn" type="button" data-d="auto">おまかせ</button><button class="btn" type="button" data-d="cancel">やめる</button><button class="btn main" type="button" data-d="ok" ${chosen.length === need ? '' : 'disabled'}>${mode === 'deploy' ? '出陣する' : '成る'}</button></div>`,
+    (act, b) => {
+      if (act === 't') {
+        const id = b.dataset.tile;
+        if (chosen.includes(id)) chosen = chosen.filter(x => x !== id);
+        else if (chosen.length < need) chosen.push(id);
+        else { chosen.shift(); chosen.push(id); }
+        draw();
+      } else if (act === 'auto') { chosen = T.autoMaterials(g, HUMAN, need, [tid]); draw(); }
+      else if (act === 'cancel') { dlg._cancel = null; closeDialog(); }
+      else if (act === 'ok' && chosen.length === need) {
+        dlg._cancel = null; closeDialog();
+        try {
+        if (mode === 'deploy') { const id = T.deploy(g, HUMAN, tid, target.sq, chosen); log(HUMAN, `${d.name}を出陣（${need + 1}枚つみ）`); Sound.place(need + 1); ui.sel = { kind: 'piece', id }; }
+        else { const from = T.top(g.pieces[target.pid]).name; T.evolve(g, HUMAN, tid, target.pid, chosen); log(HUMAN, `${from}が${d.name}に成った`); Sound.evolve(need + 1); ui.sel = { kind: 'piece', id: target.pid }; }
+        } catch (err) { console.error(err); log(null, 'その出陣はできませんでした'); }
+        render();
+      }
+    });
+    dlg._cancel = () => { dlg._cancel = null; closeDialog(); };
+  };
+  if (need === 0) {
+    if (mode === 'deploy') { const id = T.deploy(g, HUMAN, tid, target.sq, []); log(HUMAN, `${d.name}を出陣（1枚）`); Sound.place(1); ui.sel = { kind: 'piece', id }; }
+    else { const from = T.top(g.pieces[target.pid]).name; T.evolve(g, HUMAN, tid, target.pid, []); log(HUMAN, `${from}が${d.name}に成った`); Sound.evolve(1); ui.sel = { kind: 'piece', id: target.pid }; }
+    render();
+    return;
+  }
+  draw();
+}
+
+function askHuman(kind, data) {
+  return new Promise(resolve => {
+    if (kind === 'daikichi') {
+      const fk = g.pieces[data.fk];
+      openDialog(`<h2>さぼる…！</h2><p>${esc(T.top(fk).name)}の必殺技「大吉スマイル」で、この目を「クリティカル」に変えますか？（${esc(T.top(fk).name)}のHP−1）</p>
+        <div class="row"><button class="btn" type="button" data-d="no">使わない</button><button class="btn main" type="button" data-d="yes">使う</button></div>`,
+      act => { dlg._noEsc = false; closeDialog(); resolve(act === 'yes'); });
+      dlg._noEsc = true;
+      return;
+    }
+    if (kind === 'heal') {
+      if (data.options.length === 1) { resolve(data.options[0]); return; }
+      startPick({ title: 'ちょっと吸血：HPを1回復する味方をクリック。', step: 'piece', pieces: data.options, done: id => resolve(id) });
+      return;
+    }
+    if (kind === 'secondTarget') {
+      startPick({ title: '2回攻撃：2体目の攻撃相手をクリック。', skip: '2体目は攻撃しない', step: 'piece', pieces: data.options.map(t => t.id), done: id => resolve(id) });
+      return;
+    }
+    if (kind === 'kingDmg1') {
+      startPick({ title: `王将「1ダメ」：1ダメージを与えるCPUの駒をクリック。`, step: 'piece', pieces: data.options, done: id => resolve(id) });
+      return;
+    }
+    if (kind === 'kingAllyMove' || kind === 'kingEnemyMove') {
+      const ally = kind === 'kingAllyMove';
+      const opts = data.options;
+      const pick = {
+        title: ally ? '王将「味方移動2」：動かす自分の駒をクリック（2マスまで、飛び越えOK）。' : '王将「敵移動2」：動かすCPUの駒をクリック（2マスまで、飛び越えOK）。',
+        skip: '使わない', step: 'piece', pieces: opts.map(o => o.id),
+        done: id => {
+          if (id == null) { resolve(null); return; }
+          const o = opts.find(x => x.id === id);
+          startPick({ title: `${pname(id)}の移動先をクリック。`, skip: '使わない', step: 'square', squares: o.squares, back: pick,
+            done: sq => resolve(sq ? { id, r: sq[0], c: sq[1] } : null) });
+        },
+      };
+      startPick(pick);
+      return;
+    }
+    resolve(null);
+  });
+}
+function startPick(p) { ui.pick = p; setupOpen = false; render(); }
+function finishPick(v) { const p = ui.pick; ui.pick = null; render(); if (p) p.done(v); }
+
+/* ---------- input ---------- */
+$('#board').addEventListener('click', e => onBoard(e.target));
+$('#board').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onBoard(e.target); } });
+function onBoard(target) {
+  if (!g) return;
+  const el = target.closest('[data-r]');
+  if (!el) return;
+  const r = +el.dataset.r, c = +el.dataset.c;
+  const pid = g.grid[r][c];
+  const kingOwner = T.kingOwnerAt(r, c);
+  if (ui.pick) {
+    const p = ui.pick;
+    if (p.step === 'piece' && pid && p.pieces.includes(pid)) finishPick(pid);
+    else if (p.step === 'square' && p.squares.some(([a, b]) => a === r && b === c)) finishPick([r, c]);
+    else if (p.step === 'square' && pid && p.back && p.back.pieces.includes(pid)) { ui.pick = p.back; finishPick(pid); }
+    return;
+  }
+  const info = pid ? { kind: 'piece', id: pid } : kingOwner >= 0 ? { kind: 'king', id: kingOwner } : null;
+  if (busy || g.cur !== HUMAN || g.winner != null) { if (info) { ui.sel = info; render(); } return; }
+  const m = boardMarks();
+  if (g.phase === 'deploy') {
+    const s = ui.sel && ui.sel.kind === 'tile' ? ui.sel.id : null;
+    if (s && m.dp.has(r * 3 + c)) { materialsDialog(s, 'deploy', { sq: [r, c] }); return; }
+    if (s && pid && m.evo.has(pid)) { materialsDialog(s, 'evolve', T.deployTargets(g, HUMAN, s).evolves.find(e => e.pid === pid)); return; }
+    ui.sel = info; render();
+    return;
+  }
+  const s = ui.sel && ui.sel.kind === 'piece' ? ui.sel.id : null;
+  if (s && m.mv.has(r * 3 + c)) {
+    const name = pname(s);
+    T.move(g, s, r, c);
+    log(HUMAN, `${name}が移動`);
+    Sound.move();
+    if (!g.pieces[s] || g.pieces[s].done) ui.sel = null;
+    render();
+    return;
+  }
+  if (s && ((pid && m.tg.has(pid)) || (kingOwner >= 0 && m.kingTg.has(kingOwner)))) {
+    const t = pid ? { type: 'piece', id: pid } : { type: 'king', owner: kingOwner };
+    humanAttack(s, currentVariant(s).variant, t);
+    return;
+  }
+  if (info) { ui.sel = info; if (info.kind === 'piece' && info.id !== s) ui.variant = 'normal'; render(); }
+}
+
+async function humanAttack(pid, variant, target) {
+  const game = g;
+  busy = true;
+  ui.hover = null;
+  render();
+  try { await T.attack(game, makeIO(game), pid, variant, target); }
+  catch (err) { console.error(err); log(null, '攻撃できませんでした'); }
+  if (game !== g) return;
+  busy = false;
+  ui.variant = 'normal';
+  if (g.winner != null) { gameOver(); return; }
+  if (!g.pieces[pid] || g.pieces[pid].done) ui.sel = null;
+  render();
+}
+
+$('#standYou').addEventListener('click', e => {
+  const t = e.target.closest('[data-tile]');
+  if (!t || !g) return;
+  const id = t.dataset.tile;
+  ui.sel = ui.sel && ui.sel.kind === 'tile' && ui.sel.id === id ? null : { kind: 'tile', id };
+  render();
+});
+$('#standCpu').addEventListener('click', e => { const t = e.target.closest('[data-tile]'); if (t && g) { ui.sel = { kind: 'tile', id: t.dataset.tile }; render(); } });
+for (const sel of ['#board', '#standYou', '#standCpu']) {
+  $(sel).addEventListener('pointerover', e => {
+    if (e.pointerType === 'touch') return;
+    const t = e.target.closest('[data-pid],[data-tile],[data-king]');
+    const h = !t ? null : t.dataset.pid ? { kind: 'piece', id: t.dataset.pid } : t.dataset.tile ? { kind: 'tile', id: t.dataset.tile } : { kind: 'king', id: +t.dataset.king };
+    if (JSON.stringify(h) !== JSON.stringify(ui.hover)) { ui.hover = h; renderInfo(); }
+  });
+  $(sel).addEventListener('pointerleave', () => { if (ui.hover) { ui.hover = null; renderInfo(); } });
+}
+
+$('#ctrl').addEventListener('change', e => {
+  if (e.target.name && settings[e.target.name] !== undefined) {
+    settings[e.target.name] = e.target.value;
+    try { localStorage.setItem('tsumiSettings', JSON.stringify(settings)); } catch (err) {}
+    if (e.target.name === 'deck' && (!g || g.winner != null)) renderStands();
+  }
+});
+$('#ctrl').addEventListener('submit', e => { e.preventDefault(); startGame(); });
+$('#ctrl').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'again') { startGame(); return; }
+  if (act === 'setup') { setupOpen = true; render(); return; }
+  if (act === 'closeSetup') { setupOpen = false; render(); return; }
+  if (act === 'pickSkip') { finishPick(null); return; }
+  if (act === 'pickBack' && ui.pick && ui.pick.back) { ui.pick = ui.pick.back; render(); return; }
+  if (busy || !g || g.cur !== HUMAN || g.winner != null) return;
+  if (act === 'endDeploy') { T.endDeploy(g); ui.sel = null; Sound.toAction(); render(); return; }
+  if (act === 'sp') {
+    const v = b.dataset.v;
+    const pid = ui.sel && ui.sel.id;
+    const opt = T.legalAttacks(g, pid).find(x => x.variant === v);
+    if (!opt) return;
+    if (opt.kind === 'all') { humanAttack(pid, v, { type: 'all' }); return; }
+    ui.variant = ui.variant === v ? 'normal' : v;
+    render();
+    return;
+  }
+  if (act === 'endPiece') { T.finishAct(g, ui.sel.id); ui.sel = null; ui.variant = 'normal'; render(); return; }
+  if (act === 'endTurn') { Sound.endTurn(); endHumanTurn(); }
+});
+
+const sndBtn = $('#bSound');
+function syncSoundBtn() {
+  sndBtn.setAttribute('aria-pressed', String(!!settings.sound));
+  sndBtn.setAttribute('aria-label', settings.sound ? '効果音をオフにする' : '効果音をオンにする');
+  sndBtn.querySelector('span').textContent = settings.sound ? '効果音オン' : '効果音オフ';
+}
+sndBtn.addEventListener('click', () => {
+  settings.sound = !settings.sound;
+  try { localStorage.setItem('tsumiSettings', JSON.stringify(settings)); } catch (err) {}
+  syncSoundBtn();
+  if (settings.sound) { Sound.unlock(); setTimeout(() => Sound.snap(), 30); }
+});
+syncSoundBtn();
+$('#bRules').addEventListener('click', showRules);
+$('#bNew').addEventListener('click', () => { setupOpen = true; render(); $('#ctrl').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' }); });
+
+/* ---------- janken (slot reels) ---------- */
+const HANDS = [{ k: 'gu', label: 'グー' }, { k: 'choki', label: 'チョキ' }, { k: 'pa', label: 'パー' }];
+const handSVG = i => `<svg viewBox="0 0 48 48" aria-hidden="true"><use href="#h-${HANDS[i].k}"/></svg>`;
+function reelFace(el, i, stepMs) {
+  el.innerHTML = `<span class="face${stepMs ? ' step' : ''}" style="--st:${stepMs || 0}ms">${handSVG(i)}<b>${HANDS[i].label}</b></span>`;
+}
+async function spinReel(el, final, total, tick) {
+  const steps = [];
+  for (let t = 0, iv = 48; t + iv <= total; t += iv, iv *= 1.15) steps.push(iv);
+  if (reduced) steps.length = 0;
+  let idx = ((final - steps.length) % 3 + 3) % 3;
+  reelFace(el, idx);
+  for (let i = 0; i < steps.length; i++) {
+    await sleep(steps[i]);
+    idx = (idx + 1) % 3;
+    reelFace(el, idx, Math.round(Math.min(steps[i], 150)));
+    if (tick && i < steps.length - 1) Sound.tick(i / steps.length);
+  }
+  Sound.stop();
+}
+// exactly 50% each way and never あいこ: decide the winner first, then show a pair of hands that gives it
+function pickJanken(rand = Math.random) {
+  const youWin = rand() < 0.5;
+  const me = Math.floor(rand() * 3);
+  const cpu = youWin ? (me + 1) % 3 : (me + 2) % 3;   // グー > チョキ > パー > グー
+  return { youWin, me, cpu };
+}
+function janken() {
+  return new Promise(resolve => {
+    const { youWin, me, cpu } = pickJanken();
+    openDialog(`<h2>じゃんけんで先攻を決めます</h2>
+      <p class="jkmsg" id="jkMsg" aria-live="polite">じゃん、けん…</p>
+      <div class="reels">
+        <figure class="reel you"><figcaption>あなた</figcaption><div class="win" id="reelYou"><span class="q">？</span></div></figure>
+        <span class="vs" aria-hidden="true">対</span>
+        <figure class="reel cpu"><figcaption>CPU</figcaption><div class="win" id="reelCpu"><span class="q">？</span></div></figure>
+      </div>
+      <p class="note">勝ったほうが先攻です。</p>`, () => {});
+    dlg._noEsc = true;                            // it runs by itself; nothing to cancel midway
+    (async () => {
+      const ry = $('#reelYou'), rc = $('#reelCpu'), msg = $('#jkMsg');
+      await sleep(reduced ? 0 : 250);
+      await Promise.all([spinReel(ry, me, 950, false), spinReel(rc, cpu, 1550, true)]);
+      (youWin ? ry : rc).classList.add('won');
+      (youWin ? rc : ry).classList.add('lost');
+      if (youWin) Sound.jkWin(); else Sound.jkLose();
+      msg.textContent = `ぽん！${youWin ? 'あなたの勝ち' : 'CPUの勝ち'}`;
+      await sleep(reduced ? 500 : 1300);
+      dlg._noEsc = false;
+      closeDialog();
+      resolve({ first: youWin ? HUMAN : CPU, me, cpu });
+    })();
+  });
+}
+
+/* ---------- big 先攻 / 後攻 stamp ---------- */
+function showOrderBanner(first) {
+  return new Promise(resolve => {
+    const el = $('#banner');
+    const mine = first === HUMAN;
+    el.className = 'banner ' + (mine ? 'you' : 'cpu');
+    el.innerHTML = `<div class="stamp"><b>${mine ? '先攻' : '後攻'}</b><span>${mine ? 'あなたが先に動きます' : 'CPUが先に動きます'}</span></div>`;
+    el.hidden = false;
+    Sound.order(mine);
+    let done = false;
+    const key = e => { if (['Escape', 'Enter', ' '].includes(e.key)) { e.preventDefault(); finish(); } };
+    function finish() {
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', key, true);
+      el.classList.add('out');
+      setTimeout(() => { el.hidden = true; el.classList.remove('out'); el.onclick = null; resolve(); }, reduced ? 0 : 280);
+    }
+    el.onclick = finish;
+    document.addEventListener('keydown', key, true);
+    setTimeout(finish, 1800);
+  });
+}
+
+/* ---------- game flow ---------- */
+let startSeq = 0;
+async function startGame() {
+  closeDialog();
+  const seqNo = ++startSeq;
+  const you = settings.deck, cpu = you === 'A' ? 'B' : 'A';
+  let first, jk = null;
+  if (settings.first === 'random') {
+    jk = await janken();
+    if (!jk || seqNo !== startSeq) return;
+    first = jk.first;
+  } else {
+    first = settings.first === 'you' ? HUMAN : CPU;
+  }
+  g = T.newGame({ decks: [you, cpu], first });
+  g.level = settings.level;
+  const game = g;
+  setupOpen = false; busy = true; logs = []; ui = { sel: null, hover: null, variant: 'normal', pick: null, dice: null };
+  const how = jk ? `じゃんけん（あなた：${HANDS[jk.me].label}、CPU：${HANDS[jk.cpu].label}）で` : '';
+  log(null, `対戦開始：あなた＝${T.DECKS[you].name}、CPU＝${T.DECKS[cpu].name}（${LEVEL_NAME[settings.level]}）。${how}${WHO(first)}が先攻。`);
+  const drawn = T.startTurn(g);
+  log(first, drawText(drawn.length));
+  $('#layer').innerHTML = '';
+  render();
+  await showOrderBanner(first);
+  if (game !== g || seqNo !== startSeq) return;
+  busy = false;
+  if (g.cur === CPU) cpuTurn(); else render();
+}
+async function endHumanTurn() {
+  if (g.active) T.finishAct(g, g.active);
+  ui.sel = null; ui.variant = 'normal';
+  const drawn = T.endTurn(g);
+  if (g.winner != null) { gameOver(); return; }
+  log(CPU, drawText(drawn.length));
+  cpuTurn();
+}
+async function cpuTurn() {
+  busy = true;
+  const game = g;
+  render();
+  await sleep(reduced ? 150 : SPEED[settings.speed] * 0.7);
+  try { await T.cpuTurn(game, makeIO(game), CPU, game.level || 'normal'); }
+  catch (err) { console.error(err); log(null, 'CPUの手番でエラーが起きたので、ターンを終えました'); }
+  if (game !== g) return;
+  busy = false;
+  if (g.winner != null) { gameOver(); return; }
+  const drawn = T.endTurn(g);
+  if (g.winner != null) { gameOver(); return; }
+  log(HUMAN, drawText(drawn.length));
+  ui.sel = null;
+  Sound.turn();
+  render();
+}
+function gameOver() {
+  busy = false; ui.pick = null;
+  const w = g.winner;
+  const reason = g.reason === 'king' ? `${w === HUMAN ? 'CPU' : 'あなた'}の王将を3枚すべて倒しました。`
+    : g.reason === 'ko' ? `${w === HUMAN ? 'CPU' : 'あなた'}の気絶が6体になりました。`
+    : `${T.TURN_LIMIT}ターンに達したので、王将ののこり枚数（同じなら気絶の少なさ）で判定しました。`;
+  log(null, w === 2 ? '引き分け' : `${WHO(w)}の勝ち：${reason}`);
+  setTimeout(() => (w === HUMAN ? Sound.win() : Sound.lose()), 650);
+  render();
+  openDialog(`<h2>${w === 2 ? '引き分け' : w === HUMAN ? 'あなたの勝ち！' : 'CPUの勝ち'}</h2><p>${reason}</p><p>${g.turn}ターンで決着。王将のこり あなた${g.players[HUMAN].kings.length}・CPU${g.players[CPU].kings.length}、気絶 あなた${g.players[HUMAN].ko.length}・CPU${g.players[CPU].ko.length}。</p>
+    <div class="row"><button class="btn" type="button" data-d="setup">設定を変える</button><button class="btn" type="button" data-d="close">盤面を見る</button><button class="btn main" type="button" data-d="again">もう一度</button></div>`,
+  act => { closeDialog(); if (act === 'again') startGame(); else if (act === 'setup') { setupOpen = true; render(); } });
+  $('#dlgBody').classList.add('over');
+}
+
+function showRules() {
+  const rows = (k) => T.DECKS[k].yokai.map(no => { const c = T.CARDS[no]; return `<tr><td>${c.no.slice(0, 3)}</td><td>${esc(c.name)}</td><td>${c.lv}</td><td>${T.MOVE_NAME[c.mv.t]}${c.mv.n}</td><td>${c.skills.map(s => T.SKILLS[s].name).concat(c.sp ? [`必殺「${T.SPECIALS[c.sp].name}」`] : []).join('、')}${c.from ? `（${esc(c.from)}から成る）` : ''}</td></tr>`; }).join('') +
+    T.DECKS[k].kings.map(no => { const kk = T.KINGS[no]; return `<tr><td>王</td><td>王将</td><td>－</td><td>－</td><td>「${kk.name}」${kk.text}</td></tr>`; }).join('');
+  openDialog(`<h2>ルール</h2><div class="rules">
+    <h3>勝ち方</h3><ul><li>相手の王将を3枚すべて倒す。</li><li>または、相手の気絶置場の駒を6体にする。</li></ul>
+    <h3>盤と準備</h3><ul><li>盤はたて5×よこ3。いちばん手前の列のまん中が王将（3枚重ね、裏向き）、その左右が出陣マス。</li><li>デッキ12枚をシャッフルし、2枚引いてスタート。手元の駒はおたがいに見えます。</li></ul>
+    <h3>ターンの流れ</h3><ul><li>はじめに山札から2枚引く（山札がなくなったら引かない）。</li><li>出陣フェイズ：手元の妖怪を、レベルの数だけ駒をつんであいている出陣マスに出す。つんだ枚数がHP。「成り」できる妖怪は、場の成り元の上に重ねて、HPがレベルになるまでつむ。</li><li>行動フェイズ：自分の駒は1体ずつ「移動」と「攻撃」を1回ずつ（順番は自由、しなくてもOK）。出したばかりの駒もすぐ行動できる。</li></ul>
+    <h3>移動</h3><ul><li>歩：たて・よこ（ななめは2歩）。駒は飛び越えられない。</li><li>斜：ななめも1歩。飛び越えはできない。</li><li>飛：駒を飛び越えられる。駒のいるマスには止まれない。</li></ul>
+    <h3>攻撃</h3><ul><li>ふつうはたて・よこのとなり。攻撃側だけがダイスをふり、「攻撃レベル＋出目」が相手のレベル以上なら成功で1ダメージ。</li><li>クリティカルは必ず成功してダメージ＋1、さぼるは必ず失敗。</li><li>ダメージ1につき、つんでいる駒を1枚手元にもどす。HPが0になると気絶（いちばん上の駒が気絶置場へ、残りは手元へ）。</li><li>必殺技は、つんでいる駒を指定枚数手元にもどして使う（1ターンに1回、気絶する払い方はできない）。</li></ul>
+    <h3>王手</h3><ul><li>王将への攻撃は「さぼる」以外なら成功し、1回で1枚倒す。スキルや必殺技は効かない（射程2・ななめ攻撃で届く場合は攻撃できる）。</li><li>倒した王将を表にして効果を使う。倒された王将は持ち主の手元に入り、つむ駒として使える。</li></ul>
+    <h3>この版での解釈</h3><ul><li>公式マニュアルを入手できなかったため、ファンのレビューとプレイ記、スタートパック全駒の英訳をもとに再現しています。</li><li>ダメージで手元にもどす駒・回復に使う駒は自動でえらびます（もどすのは強い妖怪から、つむのは王将や低レベルから）。</li><li>必殺技名は英訳からの再現です。「周囲1ダメ」は王将のまわり8マス、「射程2」はたて・よこ2マス先までとしています。</li><li>${T.TURN_LIMIT}ターンで決着がつかないときは王将の残り、次に気絶の少なさで判定します。</li></ul>
+    <h3>スタートパックの駒</h3>
+    <p><b>大ガマ・キュウビ組</b></p><div style="overflow-x:auto"><table><tr><th>No.</th><th>名前</th><th>Lv</th><th>移動</th><th>スキル・必殺技</th></tr>${rows('A')}</table></div>
+    <p><b>土蜘蛛・オロチ組</b></p><div style="overflow-x:auto"><table><tr><th>No.</th><th>名前</th><th>Lv</th><th>移動</th><th>スキル・必殺技</th></tr>${rows('B')}</table></div>
+  </div><div class="row"><button class="btn main" type="button" data-d="close">とじる</button></div>`, () => { dlg._cancel = null; closeDialog(); });
+  dlg._cancel = () => { dlg._cancel = null; closeDialog(); };
+}
+
+/* ---------- start ---------- */
+render();
+}
+</script>
+</body>
+</html>
